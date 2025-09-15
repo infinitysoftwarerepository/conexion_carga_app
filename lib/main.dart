@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:hello_world_app/presentation/screens/counter/counter_functions_screen.dart';
+import 'presentation/themes/theme_conection.dart';
+import 'presentation/screens/home_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ConexionCargaApp());
 }
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+
+class ConexionCargaApp extends StatelessWidget {
+  const ConexionCargaApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return  MaterialApp(
+    return MaterialApp(
+      title: 'Conexión Carga',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.green
-      ),
-      home: const CounterFunctionsScreen()
+      theme: AppTheme(selectedSeed: 0).theme(), // naranja/verde
+      home: const HomePage(), // ← por ahora el home de diseño
+      // Mañana: cambia a LoginPage() o usa rutas nombradas
     );
   }
 }

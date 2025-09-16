@@ -15,7 +15,7 @@ class GlyphFilter extends StatelessWidget {
     this.topWidth = 22,
     this.step = 6,                        // 22, 16, 10
     this.height = 3,
-    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 12), required int size,
   });
 
   @override

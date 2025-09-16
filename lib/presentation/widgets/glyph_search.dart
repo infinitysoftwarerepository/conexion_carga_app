@@ -11,7 +11,7 @@ class GlyphSearch extends StatelessWidget {
     this.onTap,
     this.color = const Color(0xFF757575), // gris
     this.size = 22,
-    this.tooltip,
+    this.tooltip, required EdgeInsets padding,
   });
 
   @override

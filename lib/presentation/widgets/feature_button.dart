@@ -27,7 +27,7 @@ class FeatureButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
           color: bgColor,
-          borderRadius: BorderRadius.circular(20), // ← radio
+          borderRadius: BorderRadius.circular(50), // ← radio
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.05),
@@ -45,12 +45,12 @@ class FeatureButton extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: textColor,
-                fontWeight: FontWeight.w700, // ← grosor
-                fontSize: 16,                // ← tamaño
+                fontWeight: FontWeight.w900, // ← grosor
+                fontSize: 14,                // ← tamaño
                 height: 1.2,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 0),
             // 🅱️ Subtítulo (cursiva y tenue)
             Text(
               subtitle,

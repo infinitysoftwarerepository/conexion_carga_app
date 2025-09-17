@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// 1) 🎨 Tema central
-/// Asegúrate de que coincida con tu archivo real.
-/// En tu caso es: `theme_conection.dart` (con "conection").
+/// Asegúrate de que coincida con tu archivo real: 'theme_conection.dart' 
 import 'package:bolsa_carga_app/presentation/themes/theme_conection.dart';
 
 /// 2) 🌗 Controlador + widget del toggle (claro/oscuro)

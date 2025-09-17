@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import 'package:bolsa_carga_app/presentation/widgets/inputs/app_text_field.dart';
 import 'package:bolsa_carga_app/presentation/widgets/inputs/app_multiline_field.dart';
 import 'package:bolsa_carga_app/presentation/widgets/inputs/app_datetime_field.dart';
+// ✅ NUEVO: import del toggle de tema
+import 'package:bolsa_carga_app/presentation/widgets/theme_toggle.dart';
 
 class NewTripPage extends StatefulWidget {
   const NewTripPage({super.key});
@@ -59,10 +62,17 @@ class _NewTripPageState extends State<NewTripPage> {
 
   @override
   Widget build(BuildContext context) {
-    final spacing = 12.0;
+    const spacing = 12.0;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar nuevo viaje')),
+      appBar: AppBar(
+        title: const Text('Registrar nuevo viaje'),
+        // ✅ NUEVO: la lunita en el AppBar
+        actions: const [
+          ThemeToggle(),
+          SizedBox(width: 6),
+        ],
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -81,7 +91,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              SizedBox(height: spacing),
+              const SizedBox(height: spacing),
 
               // fila 2
               Row(
@@ -92,7 +102,6 @@ class _NewTripPageState extends State<NewTripPage> {
                       hint: 'Ciudad de origen',
                       controller: _origenCtrl,
                       icon: Icons.location_on_outlined,
-                      // onChanged: (v) { /* luego: autocompletar */ },
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -106,7 +115,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              SizedBox(height: spacing),
+              const SizedBox(height: spacing),
 
               // fila 3
               Row(
@@ -125,13 +134,13 @@ class _NewTripPageState extends State<NewTripPage> {
                       label: 'Peso (T)',
                       hint: 'Ej: 32.0',
                       controller: _pesoCtrl,
-                      keyboardType: TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       icon: Icons.scale_outlined,
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: spacing),
+              const SizedBox(height: spacing),
 
               // fila 4
               Row(
@@ -156,7 +165,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              SizedBox(height: spacing),
+              const SizedBox(height: spacing),
 
               // fila 5
               Row(
@@ -181,7 +190,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              SizedBox(height: spacing),
+              const SizedBox(height: spacing),
 
               // fila 6
               Row(
@@ -205,7 +214,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              SizedBox(height: spacing),
+              const SizedBox(height: spacing),
 
               // fila 7
               Row(
@@ -225,7 +234,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              SizedBox(height: spacing),
+              const SizedBox(height: spacing),
 
               // Observaciones
               AppMultilineField(

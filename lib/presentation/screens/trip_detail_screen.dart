@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:bolsa_carga_app/features/loads/domain/trip.dart';
+// ✅ NUEVO: import del toggle de tema (la “lunita”)
+import 'package:bolsa_carga_app/presentation/widgets/theme_toggle.dart';
 
 final _money = NumberFormat.currency(locale: 'es_CO', symbol: r'$');
 
@@ -11,20 +13,30 @@ class TripDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Detalle del viaje')),
+      appBar: AppBar(
+        title: const Text('Detalle del viaje'),
+        // ✅ NUEVO: la lunita en el AppBar
+        actions: const [
+          ThemeToggle(),
+          SizedBox(width: 6),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${trip.origin} → ${trip.destination}',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              '${trip.origin} → ${trip.destination}',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
             _row('Tonelaje', '${trip.tons.toStringAsFixed(1)} T'),
             _row('Tipo de carga', trip.cargoType),
             _row('Vehículo', trip.vehicle),
             _row('Tarifa', _money.format(trip.price)),
             if (trip.notes.isNotEmpty) _row('Notas', trip.notes),
+
             const Spacer(),
             SizedBox(
               width: double.infinity,
@@ -46,11 +58,12 @@ class TripDetailPage extends StatelessWidget {
           children: [
             SizedBox(width: 130, child: Text('$label:')),
             Expanded(
-              child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                value,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),
       );
 }
-
-

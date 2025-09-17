@@ -60,6 +60,9 @@ flutter:
   assets:
     - assets/images/logo_conexion_carga_V1.jpg
     - assets/images/logo_conexion_carga_V1.png
+    - assets/images/banner_llantas_30_off.png
+    - assets/images/banner_seguros_20.png
+    - assets/images/logo_conexion_carga_remasterizado_V1.png
     
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

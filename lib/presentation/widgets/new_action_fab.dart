@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:bolsa_carga_app/presentation/themes/theme_conection.dart';
+
 
 class NewActionFab extends StatelessWidget {
   final String label;
@@ -13,7 +15,7 @@ class NewActionFab extends StatelessWidget {
     required this.label,
     this.onPressed,
     this.icon = Icons.add,
-    this.backgroundColor = const Color(0xFF28A745), // verde del tema
+    this.backgroundColor = kGreenStrong, // verde del tema
     this.foregroundColor = Colors.white,
     this.padding,
   });

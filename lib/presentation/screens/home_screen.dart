@@ -1,3 +1,4 @@
+import 'package:bolsa_carga_app/presentation/themes/theme_conection.dart';
 import 'package:flutter/material.dart';
 
 // ✅ Pantalla que lista los viajes (clase: LoadsPage)
@@ -48,6 +49,9 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         centerTitle: true,
         toolbarHeight: 72,
+        backgroundColor: Theme.of(context).brightness ==Brightness.dark
+          ? Colors.black
+          : kOrangeDisabled,
 
         // 👈 Muñequito solo en Home (leading)
         leading: const ProfileGlyph(
@@ -85,7 +89,7 @@ class HomeScreen extends StatelessWidget {
                   crossAxisCount: 2,
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
-                  childAspectRatio: 1.25,
+                  childAspectRatio: 3,  //altura de los botones
                   children: [
                     // ✅ Activo: navega a la bolsa de carga
                     FeatureButton(
@@ -107,7 +111,12 @@ class HomeScreen extends StatelessWidget {
                       enabled: false,
                     ),
                     const FeatureButton(
-                      title: 'CUMPLIDOS Y\nFACTURACIÓN',
+                      title: 'CUMPLIDOS',
+                      subtitle: 'Próximamente',
+                      enabled: false,
+                    ),
+                    const FeatureButton(
+                      title: 'FACTURAR',
                       subtitle: 'Próximamente',
                       enabled: false,
                     ),
@@ -126,6 +135,7 @@ class HomeScreen extends StatelessWidget {
                       subtitle: 'Próximamente',
                       enabled: false,
                     ),
+                    
                   ],
                 ),
               ),
@@ -139,7 +149,7 @@ class HomeScreen extends StatelessWidget {
                 height: 140,
                 imagePaths: const [
                   // 1) Logo ConnectionCargo (PNG transparente V2)
-                  'assets/images/logo_conexion_carga_remasterizado_V1.png',
+                  'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
                   // 2) Banner ejemplo de llantas
                   'assets/images/banner_llantas_30_off.png',
                   // 3) Banner ejemplo de seguros

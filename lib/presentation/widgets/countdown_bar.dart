@@ -1,3 +1,4 @@
+import 'package:bolsa_carga_app/presentation/themes/theme_conection.dart';
 import 'package:flutter/material.dart';
 
 class CountdownBar extends StatelessWidget {
@@ -17,7 +18,7 @@ class CountdownBar extends StatelessWidget {
     this.height = 28,
     this.dotSize = 16,
     this.spacing = 6,
-    this.barColor = const Color(0xFFFFA000),
+    this.barColor = kBrandOrange,
     this.dotColor = Colors.white,
     this.borderRadius = const BorderRadius.all(Radius.circular(8)),
     this.padding = const EdgeInsets.symmetric(horizontal: 8),

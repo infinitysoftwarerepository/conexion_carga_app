@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 /// Aquí definimos los colores "base" que usas en tu app.
 /// Nota: Son constantes para que queden en un solo lugar.
 /// ===============================================================
-const kBrandOrange = Color(0xFFF6A21A); // Naranja (ej: barrita superior de la tarjeta)
+const kBrandOrange = Color(0xFFFF7800); // Naranja (ej: barrita superior de la tarjeta)
+const kOrangeDisabled = Color(0xFFFFEDD9);
+const kGreenDisabled = Color(0xFFDBF0D9);
 const kBrandGreen  = Color(0xFFA7E27A); // Verde claro (puede usarse en botones habilitados)
-const kGreenStrong = Color(0xFF4CAF50); // Verde fuerte (acciones principales / FAB)
+const kGreenStrong = Color(0xFF19B300); // Verde fuerte (acciones principales / FAB)
 const kCreamBg     = Color(0xFFF5F5F2); // Fondo de pantallas
 const kGreySoft    = Color(0xFFEAEAEA); // Gris claro (bordes, separadores)
 const kGreyText    = Color(0xFF6B7280); // Gris medio (íconos, texto secundario)

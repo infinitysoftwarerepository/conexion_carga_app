@@ -1,3 +1,4 @@
+import 'package:bolsa_carga_app/presentation/themes/theme_conection.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -64,7 +65,7 @@ class LoadCard extends StatelessWidget {
                           height: 28,
                           dotSize: 16,
                           spacing: 6,
-                          barColor: Color(0xFFFFA000), // naranja
+                          barColor: kBrandOrange, // naranja
                           dotColor: Colors.white,
                           align: MainAxisAlignment.start,
                         ),
@@ -77,7 +78,7 @@ class LoadCard extends StatelessWidget {
                           width: 28,
                           height: 28,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF28A745), // verde
+                            color: kGreenStrong, // verde
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(

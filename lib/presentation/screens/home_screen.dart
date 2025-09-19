@@ -1,4 +1,3 @@
-import 'package:bolsa_carga_app/presentation/themes/theme_conection.dart';
 import 'package:flutter/material.dart';
 
 // ✅ Pantalla que lista los viajes (clase: LoadsPage)
@@ -16,9 +15,12 @@ import 'package:bolsa_carga_app/presentation/widgets/profile_glyph.dart';
 // ✅ Carrusel reutilizable del banner inferior
 import 'package:bolsa_carga_app/presentation/widgets/banner_carousel.dart';
 
+// ✅ NUEVO: AppBar reutilizable
+import 'package:bolsa_carga_app/presentation/widgets/custom_app_bar.dart';
+
 /// 🏠 Pantalla principal (Home)
-/// Muestra saludo, nombre del usuario y accesos a funciones.
-/// El color del “Nombre de usuario” se adapta a claro/oscuro.
+/// Mantiene el look exacto: título en dos líneas centrado,
+/// muñequito a la izquierda, luna a la derecha.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
@@ -29,45 +31,19 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🎨 Estilos dependientes del tema (claro/oscuro)
-    final titleStyle = Theme.of(context).textTheme.titleLarge!.copyWith(
-          fontWeight: FontWeight.w700,
-          fontSize: 22,
-          color: Theme.of(context).colorScheme.onBackground,
-        );
-
-    // 👤 “Nombre de usuario” visible en ambos temas
-    final subtitleStyle = Theme.of(context).textTheme.bodyMedium!.copyWith(
-          fontSize: 13,
-          fontStyle: FontStyle.italic,
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white
-              : Colors.black54,
-        );
-
     return Scaffold(
-      appBar: AppBar(
+      appBar: CustomAppBar(
+        titleSpacing: 0,
+        height: 72,                 // 👈 mismo alto que usabas
         centerTitle: true,
-        toolbarHeight: 72,
-        backgroundColor: Theme.of(context).brightness ==Brightness.dark
-          ? Colors.black
-          : kOrangeDisabled,
-
         // 👈 Muñequito solo en Home (leading)
-        leading: const ProfileGlyph(
-          tooltip: 'Perfil',
+        leading: const ProfileGlyph(tooltip: 'Perfil'),
+        // 👈 Título en dos líneas como lo tenías
+        title: TwoLineTitle(
+          top: 'BIENVENIDO',
+          bottom: userName,
         ),
-
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('BIENVENIDO', style: titleStyle),
-            const SizedBox(height: 4),
-            Text(userName, style: subtitleStyle),
-          ],
-        ),
-
-        // 🌗 Toggle del tema a la derecha
+        // 👈 Toggle de tema a la derecha
         actions: [
           ThemeToggle(
             color: Theme.of(context).colorScheme.onSurface,
@@ -77,7 +53,7 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
 
-      body: SafeArea( // ✅ protege de los bordes del sistema
+      body: SafeArea(
         bottom: true,
         child: Column(
           children: [
@@ -89,7 +65,8 @@ class HomeScreen extends StatelessWidget {
                   crossAxisCount: 2,
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
-                  childAspectRatio: 3,  //altura de los botones
+                  // 👇 ajustas esto si quieres tiles más bajitos/altos
+                  childAspectRatio: 3,
                   children: [
                     // ✅ Activo: navega a la bolsa de carga
                     FeatureButton(
@@ -116,7 +93,7 @@ class HomeScreen extends StatelessWidget {
                       enabled: false,
                     ),
                     const FeatureButton(
-                      title: 'FACTURAR',
+                      title: 'FACTURACIÓN',
                       subtitle: 'Próximamente',
                       enabled: false,
                     ),
@@ -135,29 +112,23 @@ class HomeScreen extends StatelessWidget {
                       subtitle: 'Próximamente',
                       enabled: false,
                     ),
-                    
+                  
                   ],
                 ),
               ),
             ),
 
             // =================== BANNER INFERIOR ===================
-            // 📌 Lo subimos un “poquito” con padding y dejamos un SafeArea abajo.
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8), // ← lo sube y separa bordes
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: BannerCarousel(
                 height: 140,
                 imagePaths: const [
-                  // 1) Logo ConnectionCargo (PNG transparente V2)
                   'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
-                  // 2) Banner ejemplo de llantas
                   'assets/images/banner_llantas_30_off.png',
-                  // 3) Banner ejemplo de seguros
                   'assets/images/banner_seguros_20.png',
                 ],
-                // (Opcional) cambia el intervalo si quieres:
                 interval: const Duration(seconds: 5),
-                // (Opcional) redondeo suave para integrarlo con el fondo
                 borderRadius: 16,
               ),
             ),

@@ -24,11 +24,38 @@ class FeatureButton extends StatelessWidget {
     const double height = 72; // ← más bajo que antes
 
     // Colores según estado habilitado
-    final Color green = enabled ? kGreenStrong : kGreenDisabled;
-    final Color orange = enabled ? kBrandOrange : kOrangeDisabled;
-    final Color titleColor = enabled ? Colors.white : Colors.black54;
-    final Color subColor =
-        enabled ? Colors.white70 : Colors.black.withOpacity(0.4);
+    final Color green = enabled 
+    ? Theme.of(context).brightness == Brightness.light
+          ? kGreenStrong
+          : kDarkGreen 
+    : Theme.of(context).brightness == Brightness.light
+          ? kGreenDisabled
+          : kDeepDarkGreen;   
+    
+    final Color orange = enabled 
+    ? Theme.of(context).brightness == Brightness.light
+          ? kBrandOrange
+          : kDarkOrange 
+    : Theme.of(context).brightness == Brightness.light
+          ? kOrangeDisabled
+          : kDeepDarkOrange;
+
+    final Color titleColor = enabled 
+      ? Theme.of(context).brightness == Brightness.light
+          ? Colors.white
+          : Colors.black 
+      : Theme.of(context).brightness == Brightness.light
+          ? Colors.white
+          : kDeepDarkGray;
+
+    final Color subColor = enabled 
+      ? Theme.of(context).brightness == Brightness.light
+          ? Colors.white
+          : Colors.black 
+      : Theme.of(context).brightness == Brightness.light
+          ? Colors.white
+          : kDeepDarkGray;
+
 
     return InkWell(
       borderRadius: BorderRadius.circular(radius),
@@ -51,7 +78,7 @@ class FeatureButton extends StatelessWidget {
             // Zona de texto (70%)
             // ===========================
             Expanded(
-              flex: 7,
+              flex: 8,
               child: Container(
                 decoration: BoxDecoration(
                   color: green,
@@ -60,7 +87,7 @@ class FeatureButton extends StatelessWidget {
                   ),
                 ),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                    const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -74,7 +101,7 @@ class FeatureButton extends StatelessWidget {
                       style: TextStyle(
                         color: titleColor,
                         fontWeight: FontWeight.w900,
-                        fontSize: 10,
+                        fontSize: 12,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -85,7 +112,7 @@ class FeatureButton extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: subColor,
-                        fontSize: 8,
+                        fontSize: 10,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -95,7 +122,7 @@ class FeatureButton extends StatelessWidget {
             ),
 
             // ===========================
-            // Cápsula naranja (30%)
+            // Cápsula naranja (20%)
             // ===========================
             Expanded(
               flex: 2,
@@ -106,10 +133,16 @@ class FeatureButton extends StatelessWidget {
                     right: Radius.circular(radius),
                   ),
                 ),
-                child: const Center(
+                child:  Center(
                   child: Icon(
                     Icons.arrow_forward,
-                    color: Colors.white,
+                    color: enabled 
+                              ? Theme.of(context).brightness == Brightness.light
+                                ? Colors.white
+                                : Colors.black 
+                              : Theme.of(context).brightness == Brightness.light
+                                ? Colors.white
+                                : kDeepDarkGray,
                     size: 20,
                   ),
                 ),

@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+// Inputs reutilizables
 import 'package:bolsa_carga_app/presentation/widgets/inputs/app_text_field.dart';
 import 'package:bolsa_carga_app/presentation/widgets/inputs/app_multiline_field.dart';
 import 'package:bolsa_carga_app/presentation/widgets/inputs/app_datetime_field.dart';
-// ✅ NUEVO: import del toggle de tema
+
+// Toggle de tema
 import 'package:bolsa_carga_app/presentation/widgets/theme_toggle.dart';
+
+// NUEVO: AppBar reutilizable
+import 'package:bolsa_carga_app/presentation/widgets/custom_app_bar.dart';
 
 class NewTripPage extends StatefulWidget {
   const NewTripPage({super.key});
@@ -53,7 +58,6 @@ class _NewTripPageState extends State<NewTripPage> {
   }
 
   void _guardar() {
-    // TODO: aquí armar el objeto/DTO y enviar a repositorio o API
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Viaje registrado (diseño listo).')),
     );
@@ -62,15 +66,20 @@ class _NewTripPageState extends State<NewTripPage> {
 
   @override
   Widget build(BuildContext context) {
-    const spacing = 12.0;
+    final spacing = 12.0;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: CustomAppBar(
+        titleSpacing: 0,
+        height: 56,
+        centerTitle: true,
         title: const Text('Registrar nuevo viaje'),
-        // ✅ NUEVO: la lunita en el AppBar
-        actions: const [
-          ThemeToggle(),
-          SizedBox(width: 6),
+        actions: [
+          ThemeToggle(
+            color: Theme.of(context).colorScheme.onSurface,
+            size: 22,
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: SafeArea(
@@ -91,7 +100,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
 
               // fila 2
               Row(
@@ -115,7 +124,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
 
               // fila 3
               Row(
@@ -140,7 +149,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
 
               // fila 4
               Row(
@@ -165,7 +174,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
 
               // fila 5
               Row(
@@ -190,7 +199,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
 
               // fila 6
               Row(
@@ -214,7 +223,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
 
               // fila 7
               Row(
@@ -234,7 +243,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: spacing),
+              SizedBox(height: spacing),
 
               // Observaciones
               AppMultilineField(

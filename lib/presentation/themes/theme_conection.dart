@@ -6,9 +6,14 @@ import 'package:flutter/material.dart';
 /// Nota: Son constantes para que queden en un solo lugar.
 /// ===============================================================
 const kBrandOrange = Color(0xFFFF7800); // Naranja (ej: barrita superior de la tarjeta)
-const kOrangeDisabled = Color(0xFFFFEDD9);
-const kGreenDisabled = Color(0xFFDBF0D9);
-const kBrandGreen  = Color(0xFFA7E27A); // Verde claro (puede usarse en botones habilitados)
+const kOrangeDisabled = Color(0xFFFFEDD9); // Naranja opaco usado en botones desabilitados
+const kGreenDisabled = Color(0xFFDBF0D9); //  Verde opaco usado en botonoes desabilitados
+const kBrandGreen  = Color(0xFFA7E27A); // Verde claro 
+const kDarkOrange = Color(0xFF8B4500); // Naranja oscuro (marrón) usado en botones habilitados del tema oscuro
+const kDarkGreen = Color(0xFF5A8B3E); // Verde oscuro usado en botones habilitados del tema oscuro
+const kDeepDarkOrange = Color(0xFF4F2B00);
+const kDeepDarkGreen = Color(0xFF2F4D2A);
+const kDeepDarkGray = Color(0xFF1A1A1A); // Gris muy oscuro
 const kGreenStrong = Color(0xFF19B300); // Verde fuerte (acciones principales / FAB)
 const kCreamBg     = Color(0xFFF5F5F2); // Fondo de pantallas
 const kGreySoft    = Color(0xFFEAEAEA); // Gris claro (bordes, separadores)
@@ -112,7 +117,6 @@ class AppTheme {
 
       // Color de fondo principal
       scaffoldBackgroundColor: kCreamBg,
-
       // ColorScheme generado a partir de un seed
       colorScheme: ColorScheme.fromSeed(
         seedColor: seed,
@@ -132,8 +136,8 @@ class AppTheme {
       appBarTheme: const AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: kOrangeDisabled,
+        foregroundColor: kDeepDarkOrange,
       ),
 
       // Inputs de texto (casillitas de formulario)
@@ -152,17 +156,54 @@ class AppTheme {
 
   /// Tema OSCURO (si más adelante lo activas)
   ThemeData darkTheme() {
-    final seed = _seedCandidates[selectedSeed];
-    return ThemeData(
-      useMaterial3: true,
+  final seed = _seedCandidates[selectedSeed];
+
+  // 🎯 Paleta manual para oscuro (profesional y neutra)
+  const kDarkBg      = Color(0xFF0F0F0F); // fondo global (casi negro)
+  const kDarkSurface = Color(0xFF1A1A1A); // superficies (cards, sheets) si no las fijas por widget
+  const kOnSurface   = Color(0xFFE6E6E6); // texto/íconos sobre superficies
+  // Nota: tus acentos siguen siendo los de la marca:
+  // kGreenStrong y kBrandOrange
+
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+
+    // ✅ Fondo principal de pantallas
+    scaffoldBackgroundColor: kDarkBg,
+
+    // ✅ Colores base del esquema (sobrescribimos lo importante)
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: seed,
       brightness: Brightness.dark,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: seed,
-        brightness: Brightness.dark,
+    ).copyWith(
+      background: kDarkBg,        // fondo global
+      surface: kDarkSurface,      // superficies por defecto
+      onSurface: kOnSurface,      // texto/íconos en superficies
+      primary: kGreenStrong,      // acento verde de tu marca
+      secondary: kBrandOrange,    // acento naranja de tu marca
+    ),
+
+    // ✅ Si usas tu ThemeExtension para íconos/bordes, la conservas
+    extensions: <ThemeExtension<dynamic>>[
+      AppColors.dark().copyWith(
+        // opcional: ajusta tonos de tu extensión si quieres
+        // glyph: Color(0xFFBFC3CA),
       ),
-      extensions: <ThemeExtension<dynamic>>[
-        AppColors.dark(),
-      ],
-    );
-  }
+    ],
+
+    // ✅ AppBar oscuro consistente (fondo + color de texto/íconos)
+    appBarTheme: const AppBarTheme(
+      backgroundColor: kDeepDarkGray,
+      foregroundColor: Colors.white,
+      elevation: 0,
+    ),
+
+    // (Opcional) Si QUIERES que las cards del framework salgan oscuras:
+    // cardTheme: const CardTheme(color: kDarkSurface),
+    //
+    // Nota: tus LoadCards ya fuerzan `color: Colors.white`, así que
+    // seguirán viéndose BLANCAS también en oscuro (como pediste).
+  );
+}
 }

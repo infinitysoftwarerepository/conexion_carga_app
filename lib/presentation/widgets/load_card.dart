@@ -14,12 +14,6 @@ final _money = NumberFormat.currency(
 );
 
 /// Tarjeta de viaje (LoadCard)
-/// - **Diseño igual** al que te gustaba:
-///   • Encabezado naranja con 3 puntos blancos
-///   • Botón verde (hamburguesa) arriba derecha
-///   • Tarjeta **blanca** SIEMPRE (claro y oscuro)
-/// - **Texto siempre negro** (no se apaga en dark mode)
-/// - Sin overflow: el contenido no se sale de la tarjeta
 class LoadCard extends StatelessWidget {
   final Trip trip;
   const LoadCard({super.key, required this.trip});
@@ -32,9 +26,10 @@ class LoadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ⚠️ Forzamos blanco para mantener la tarjeta igual en ambos temas
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
     return Material(
-      color: Colors.white,
+      color: isLight ? Colors.white : kDeepDarkGray,
       borderRadius: BorderRadius.circular(12),
       elevation: 1,
       child: InkWell(
@@ -43,10 +38,9 @@ class LoadCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE7E7E7)),
+            border: Border.all(color: isLight ? Colors.white : kDeepDarkGray),
           ),
           padding: const EdgeInsets.all(10),
-          // ✅ Distribuimos contenido para evitar “BOTTOM OVERFLOWED…”
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -59,14 +53,18 @@ class LoadCard extends StatelessWidget {
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: CountdownBar(
                           dots: 3,
                           height: 28,
                           dotSize: 16,
                           spacing: 6,
-                          barColor: kBrandOrange, // naranja
-                          dotColor: Colors.white,
+                          barColor:  Theme.of(context).brightness == Brightness.light
+                            ? kBrandOrange
+                            : kDeepDarkOrange,
+                          dotColor:  Theme.of(context).brightness == Brightness.light
+                                    ? Colors.white
+                                    : Colors.black,
                           align: MainAxisAlignment.start,
                         ),
                       ),
@@ -78,7 +76,9 @@ class LoadCard extends StatelessWidget {
                           width: 28,
                           height: 28,
                           decoration: BoxDecoration(
-                            color: kGreenStrong, // verde
+                            color:  Theme.of(context).brightness == Brightness.light
+                                    ? kGreenStrong
+                                    : kDeepDarkGreen,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
@@ -88,44 +88,48 @@ class LoadCard extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: const Icon(Icons.menu, size: 16, color: Colors.white),
+                          child:  Icon(Icons.menu, size: 16, color: 
+                          
+                           Theme.of(context).brightness == Brightness.light
+                            ? Colors.white
+                            : kGreyText),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6), // un pelín más compacto que antes
+                  const SizedBox(height: 6),
 
-                  // Tonelaje
+                  // Tonelaje (negro/blanco según tema)
                   Text(
                     '${trip.tons.toStringAsFixed(1)} T',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
-                      color: Colors.black, // ← SIEMPRE negro
+                      color: isLight ? Colors.black : kGreyText,
                     ),
                   ),
                   const SizedBox(height: 2),
 
-                  // Origen / Destino
-                  _smallLabel('Origen: ${trip.origin}'),
-                  _smallLabel('Destino: ${trip.destination}'),
+                  // Origen / Destino (negro/blanco según tema)
+                  _smallLabel(context, 'Origen: ${trip.origin}'),
+                  _smallLabel(context, 'Destino: ${trip.destination}'),
 
                   const SizedBox(height: 4),
 
-                  // Info adicional (gris pero bien visible)
-                  _smallMuted('${trip.cargoType} • ${trip.vehicle}'),
+                  // Info adicional
+                  _smallMuted(context, '${trip.cargoType} • ${trip.vehicle}'),
                 ],
               ),
 
-              // ── Bloque inferior: precio ─────────────────────────────────────
+              // ── Bloque inferior: precio (negro/blanco según tema) ──────────
               Text(
                 _money.format(trip.price),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: Colors.black, // ← SIEMPRE negro
+                  color: isLight ? Colors.black : kGreyText,
                 ),
               ),
             ],
@@ -135,26 +139,31 @@ class LoadCard extends StatelessWidget {
     );
   }
 
-  // Texto “etiqueta” (origen/destino) SIEMPRE negro
-  Widget _smallLabel(String text) => Text(
+  // Etiquetas (origen/destino): negro en claro, blanco en oscuro
+  Widget _smallLabel(BuildContext context, String text) => Text(
         text,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
-          color: Colors.black, // ← SIEMPRE negro
+          color: Theme.of(context).brightness == Brightness.light
+              ? Colors.black
+              : kGreyText,
         ),
       );
 
-  // Texto “muted” (carga / vehículo) gris estable (visible en ambos temas)
-  Widget _smallMuted(String text) => Text(
+  // “Muted”: si lo quieres también negro/blanco según tema, queda así.
+  // (Si prefieres gris fijo, cambia el color a const Color(0xFF6B7280).)
+  Widget _smallMuted(BuildContext context, String text) => Text(
         text,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 12,
-          color: Color(0xFF6B7280), // gris firme (no se apaga en dark)
+          color: Theme.of(context).brightness == Brightness.light
+              ? Colors.black
+              : Colors.white,
         ),
       );
 }

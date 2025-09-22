@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:bolsa_carga_app/features/loads/domain/trip.dart';
 
 // widgets
-import 'package:bolsa_carga_app/presentation/widgets/glyph_filter.dart';
-import 'package:bolsa_carga_app/presentation/widgets/glyph_search.dart';
-import 'package:bolsa_carga_app/presentation/widgets/load_card.dart';
-import 'package:bolsa_carga_app/presentation/widgets/new_action_fab.dart';
-import 'package:bolsa_carga_app/presentation/widgets/theme_toggle.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/glyph_filter.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/glyph_search.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/load_card.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/new_action_fab.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
 
 // pantalla del formulario
-import 'package:bolsa_carga_app/presentation/screens/new_trip_screen.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/pages/new_trip_page.dart';
 
 // NUEVO: AppBar reutilizable
-import 'package:bolsa_carga_app/presentation/widgets/custom_app_bar.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
 
 class LoadsPage extends StatefulWidget {
   const LoadsPage({super.key});

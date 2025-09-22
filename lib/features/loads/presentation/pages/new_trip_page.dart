@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 // Inputs reutilizables
-import 'package:bolsa_carga_app/presentation/widgets/inputs/app_text_field.dart';
-import 'package:bolsa_carga_app/presentation/widgets/inputs/app_multiline_field.dart';
-import 'package:bolsa_carga_app/presentation/widgets/inputs/app_datetime_field.dart';
+import 'package:bolsa_carga_app/core/widgets/inputs/app_text_field.dart';
+import 'package:bolsa_carga_app/core/widgets/inputs/app_multiline_field.dart';
+import 'package:bolsa_carga_app/core/widgets/inputs/app_datetime_field.dart';
 
 // Toggle de tema
-import 'package:bolsa_carga_app/presentation/widgets/theme_toggle.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
 
 // NUEVO: AppBar reutilizable
-import 'package:bolsa_carga_app/presentation/widgets/custom_app_bar.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
 
 class NewTripPage extends StatefulWidget {
   const NewTripPage({super.key});

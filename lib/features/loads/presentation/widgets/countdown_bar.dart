@@ -1,4 +1,4 @@
-import 'package:bolsa_carga_app/presentation/themes/theme_conection.dart';
+import 'package:bolsa_carga_app/app/theme/theme_conection.dart';
 import 'package:flutter/material.dart';
 
 class CountdownBar extends StatelessWidget {

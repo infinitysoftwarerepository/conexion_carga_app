@@ -1,10 +1,10 @@
-import 'package:bolsa_carga_app/presentation/themes/theme_conection.dart';
+import 'package:bolsa_carga_app/app/theme/theme_conection.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:bolsa_carga_app/features/loads/domain/trip.dart';
-import 'package:bolsa_carga_app/presentation/screens/trip_detail_screen.dart';
-import 'package:bolsa_carga_app/presentation/widgets/countdown_bar.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/pages/trip_detail_page.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/countdown_bar.dart';
 
 /// Formato de moneda COP sin decimales
 final _money = NumberFormat.currency(

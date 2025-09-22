@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 
 // ✅ Pantalla que lista los viajes (clase: LoadsPage)
-import 'package:bolsa_carga_app/presentation/screens/my_loads_screen.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/pages/my_loads_page.dart';
 
 // ✅ Botón de mosaico reutilizable
-import 'package:bolsa_carga_app/presentation/widgets/feature_button.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/feature_button.dart';
 
 // ✅ Toggle de tema (sol/luna)
-import 'package:bolsa_carga_app/presentation/widgets/theme_toggle.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
 
 // ✅ Muñequito de perfil reutilizable
-import 'package:bolsa_carga_app/presentation/widgets/profile_glyph.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/profile_glyph.dart';
 
 // ✅ Carrusel reutilizable del banner inferior
-import 'package:bolsa_carga_app/presentation/widgets/banner_carousel.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
 
 // ✅ NUEVO: AppBar reutilizable
-import 'package:bolsa_carga_app/presentation/widgets/custom_app_bar.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
 
 /// 🏠 Pantalla principal (Home)
 /// Mantiene el look exacto: título en dos líneas centrado,

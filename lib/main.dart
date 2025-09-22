@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 
 /// 1) 🎨 Tema central
 /// Asegúrate de que coincida con tu archivo real: 'theme_conection.dart' 
-import 'package:bolsa_carga_app/presentation/themes/theme_conection.dart';
+import 'package:bolsa_carga_app/app/theme/theme_conection.dart';
 
 /// 2) 🌗 Controlador + widget del toggle (claro/oscuro)
 /// Aquí está el ValueNotifier y el botón que pusimos para cambiar de tema.
-import 'package:bolsa_carga_app/presentation/widgets/theme_toggle.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
 
 /// 3) 🏠 Pantalla inicial REAL
 /// Ojo: la carpeta correcta es `screens` y el archivo `home_screen.dart`.
 /// Y dentro de ese archivo tu clase debe llamarse **HomeScreen**.
-import 'package:bolsa_carga_app/presentation/screens/home_screen.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/pages/home_page.dart';
 
 void main() {
   // 🛠 Asegura que Flutter está inicializado antes de ejecutar la app.

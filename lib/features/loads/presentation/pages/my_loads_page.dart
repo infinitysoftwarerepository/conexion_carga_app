@@ -176,13 +176,19 @@ class _LoadsPageState extends State<LoadsPage> with SingleTickerProviderStateMix
 
       // FAB: abre el formulario de nuevo viaje
       floatingActionButton: NewActionFab(
-        label: 'Nuevo viaje',
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const NewTripPage()),
-          );
-        },
-      ),
+  label: 'Nuevo viaje',
+  icon: Icons.add,                 // si tu NewActionFab acepta icon (opcional)
+  onTap: () {                      // 👈 reemplaza onPressed por onTap
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NewTripPage()),
+    );
+  },
+  // opcional: tema claro/oscuro
+  // backgroundColor: Theme.of(context).brightness == Brightness.light
+  //     ? kGreenStrong
+  //     : kDarkGreen,
+  // foregroundColor: Colors.white,
+),
     );
   }
 }

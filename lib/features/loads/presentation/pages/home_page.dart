@@ -9,18 +9,18 @@ import 'package:bolsa_carga_app/features/loads/presentation/widgets/feature_butt
 // ✅ Toggle de tema (sol/luna)
 import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
 
-// ✅ Muñequito de perfil reutilizable
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/profile_glyph.dart';
-
 // ✅ Carrusel reutilizable del banner inferior
 import 'package:bolsa_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
 
 // ✅ NUEVO: AppBar reutilizable
 import 'package:bolsa_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
 
-/// 🏠 Pantalla principal (Home)
-/// Mantiene el look exacto: título en dos líneas centrado,
-/// muñequito a la izquierda, luna a la derecha.
+// ✅ NUEVO: Menú del muñequito reutilizable
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/anchored_menu_button.dart';
+
+// ✅ Para regresar a StartPage al cerrar sesión
+import 'package:bolsa_carga_app/features/loads/presentation/pages/start_page.dart';
+
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
@@ -34,15 +34,39 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: CustomAppBar(
         titleSpacing: 0,
-        height: 72,                 // 👈 mismo alto que usabas
+        height: 72,
         centerTitle: true,
-        // 👈 Muñequito solo en Home (leading)
-        leading: const ProfileGlyph(tooltip: 'Perfil'),
+
+        // 👤 Menú del muñequito (leading) — reutilizable
+        leading: AnchoredMenuButton(
+          actions: [
+            MenuAction(
+              label: 'Ver/editar perfil',
+              icon: Icons.person,
+              onPressed: () {
+                // TODO: Abrir pantalla de perfil cuando exista
+              },
+            ),
+            MenuAction(
+              label: 'Cerrar sesión',
+              icon: Icons.logout,
+              onPressed: () {
+                // Limpia el stack y vuelve a StartPage
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const StartPage()),
+                  (_) => false,
+                );
+              },
+            ),
+          ],
+        ),
+
         // 👈 Título en dos líneas como lo tenías
         title: TwoLineTitle(
           top: 'BIENVENIDO',
           bottom: userName,
         ),
+
         // 👈 Toggle de tema a la derecha
         actions: [
           ThemeToggle(
@@ -65,7 +89,6 @@ class HomeScreen extends StatelessWidget {
                   crossAxisCount: 2,
                   crossAxisSpacing: 14,
                   mainAxisSpacing: 14,
-                  // 👇 ajustas esto si quieres tiles más bajitos/altos
                   childAspectRatio: 3,
                   children: [
                     // ✅ Activo: navega a la bolsa de carga
@@ -80,8 +103,6 @@ class HomeScreen extends StatelessWidget {
                         );
                       },
                     ),
-
-                    // ⛔ Aún deshabilitados
                     const FeatureButton(
                       title: 'ESTOY DISPONIBLE',
                       subtitle: 'Próximamente',
@@ -112,7 +133,6 @@ class HomeScreen extends StatelessWidget {
                       subtitle: 'Próximamente',
                       enabled: false,
                     ),
-                  
                   ],
                 ),
               ),
@@ -128,7 +148,7 @@ class HomeScreen extends StatelessWidget {
                   'assets/images/banner_llantas_30_off.png',
                   'assets/images/banner_seguros_20.png',
                 ],
-                interval: const Duration(seconds: 5),
+                interval: Duration(seconds: 5),
                 borderRadius: 16,
               ),
             ),

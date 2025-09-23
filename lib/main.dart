@@ -11,7 +11,8 @@ import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle
 /// 3) 🏠 Pantalla inicial REAL
 /// Ojo: la carpeta correcta es `screens` y el archivo `home_screen.dart`.
 /// Y dentro de ese archivo tu clase debe llamarse **HomeScreen**.
-import 'package:bolsa_carga_app/features/loads/presentation/pages/home_page.dart';
+/// import 'package:bolsa_carga_app/features/loads/presentation/pages/home_page.dart';
+import 'package:bolsa_carga_app/features/loads/presentation/pages/start_page.dart';
 
 void main() {
   // 🛠 Asegura que Flutter está inicializado antes de ejecutar la app.
@@ -34,7 +35,7 @@ class Bootstrap extends StatelessWidget {
       valueListenable: ThemeController.themeMode, // <- viene de theme_toggle.dart
       builder: (context, mode, _) {
         return MaterialApp(
-          title: 'Conexión Carga',
+          title: 'CONEXIÓN CARGA',
           debugShowCheckedModeBanner: false,
 
           // 🎨 Temas principal y oscuro
@@ -45,7 +46,7 @@ class Bootstrap extends StatelessWidget {
 
           // 🏠 Pantalla inicial
           // Asegúrate que en home_screen.dart la clase sea `HomeScreen`
-          home: const HomeScreen(userName: 'Nombre de usuario'),
+          home: const StartPage(userName: '◄ Inicie sesión o registrese'),
 
           // 🚪 Opcional: Define rutas con nombre si quieres navegar con strings
           // routes: {

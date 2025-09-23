@@ -1,36 +1,56 @@
-import 'package:flutter/material.dart';
 import 'package:bolsa_carga_app/app/theme/theme_conection.dart';
-
+import 'package:flutter/material.dart';
 
 class NewActionFab extends StatelessWidget {
-  final String label;
-  final VoidCallback? onPressed;
-  final IconData icon;
-  final Color backgroundColor;
-  final Color foregroundColor;
-  final EdgeInsets? padding;
-
   const NewActionFab({
     super.key,
     required this.label,
-    this.onPressed,
-    this.icon = Icons.add,
-    this.backgroundColor = kGreenStrong, // verde del tema
-    this.foregroundColor = Colors.white,
-    this.padding,
+    required this.onTap,
+    this.icon,
+    this.backgroundColor,   // 👈 nuevo
+    this.foregroundColor,   // 👈 opcional (color del texto/ícono)
   });
+
+  final String label;
+  final VoidCallback onTap;
+  final IconData? icon;
+  final Color? backgroundColor; // 👈 nuevo
+  final Color? foregroundColor; // 👈 nuevo
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: padding ?? const EdgeInsets.only(right: 8, bottom: 8),
-      child: FloatingActionButton.extended(
-        onPressed: onPressed,
-        backgroundColor: backgroundColor,
-        foregroundColor: foregroundColor,
-        icon: Icon(icon),
-        label: Text(label),
-        shape: const StadiumBorder(),
+    final Color bg = Theme.of(context).brightness == Brightness.light
+          ? kGreenStrong
+          : kDeepDarkGreen ;
+    final Color fg = Theme.of(context).brightness == Brightness.light
+          ? Colors.white
+          : kGreyText ;
+
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(28),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(28),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 20, color: fg),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: fg,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

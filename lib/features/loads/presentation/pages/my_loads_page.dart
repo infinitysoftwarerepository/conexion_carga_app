@@ -79,10 +79,17 @@ class _LoadsPageState extends State<LoadsPage> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: CustomAppBar(
+        foregroundColor: Theme.of(context).brightness == Brightness.light
+          ? Colors.black
+          : Colors.white ,
         titleSpacing: 0,
         height: 56,
         centerTitle: false, // 👈 como lo pediste, para que no tape el título
-        title: const Text('Bolsa de Carga'),
+        title: const Text('Bolsa de Carga',  style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.3,
+              )),
         actions: [
           GlyphSearch(
             tooltip: _searchOpen ? 'Cerrar búsqueda' : 'Buscar',

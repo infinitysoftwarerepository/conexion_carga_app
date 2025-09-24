@@ -46,7 +46,7 @@ class Bootstrap extends StatelessWidget {
 
           // 🏠 Pantalla inicial
           // Asegúrate que en home_screen.dart la clase sea `HomeScreen`
-          home: const StartPage(userName: '◄ Inicie sesión o registrese'),
+          home: const StartPage(userName: 'Nombre de Usuario'),
 
           // 🚪 Opcional: Define rutas con nombre si quieres navegar con strings
           // routes: {

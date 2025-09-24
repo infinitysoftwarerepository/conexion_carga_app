@@ -1,4 +1,5 @@
 // lib/features/loads/presentation/pages/start_page.dart
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/glyph_filter.dart';
 import 'package:flutter/material.dart';
 
 // 🎨 Colores definidos por ti
@@ -14,7 +15,11 @@ import 'package:bolsa_carga_app/features/loads/presentation/widgets/new_action_f
 import 'package:bolsa_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
 
 // 🏠 Página destino al iniciar sesión
-import 'package:bolsa_carga_app/features/loads/presentation/pages/home_page.dart';
+
+// Registro
+import 'package:bolsa_carga_app/features/loads/presentation/pages/signin_page.dart';
+
+import 'package:bolsa_carga_app/features/loads/presentation/pages/login_page.dart';
 
 class StartPage extends StatefulWidget {
   const StartPage({
@@ -56,7 +61,7 @@ class _StartPageState extends State<StartPage> {
     await showMenu<void>(
       context: context,
       position: position,
-      color: Theme.of(context).colorScheme.surface, // fondo del popup
+      color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       items: <PopupMenuEntry<void>>[
         PopupMenuItem<void>(
@@ -69,17 +74,10 @@ class _StartPageState extends State<StartPage> {
               backgroundColor: bg,
               foregroundColor: fg,
               onTap: () {
-                Navigator.pop(context); // cierra el popup
-                // 👉 Navega a Home; usa pushReplacement para no volver con "back"
-                Future.microtask(() {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (_) => const HomeScreen(
-                        userName: '◄ Registrese o inicie sesión',
-                      ),
-                    ),
-                  );
-                });
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                );
               },
             ),
           ),
@@ -94,8 +92,10 @@ class _StartPageState extends State<StartPage> {
               backgroundColor: bg,
               foregroundColor: fg,
               onTap: () {
-                Navigator.pop(context); // por ahora solo cierra
-                // TODO: Navegar a register_page cuando la tengas
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SignInPage()),
+                );
               },
             ),
           ),
@@ -110,6 +110,8 @@ class _StartPageState extends State<StartPage> {
 
     return Scaffold(
       appBar: AppBar(
+        foregroundColor:
+            Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white,
         toolbarHeight: 72,
         centerTitle: true,
 
@@ -128,15 +130,21 @@ class _StartPageState extends State<StartPage> {
             const Text(
               'CONEXIÓN CARGA',
               style: TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.3,
               ),
             ),
             Text(
-              widget.userName,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: cs.onSurface.withOpacity(0.7),
-                  ),
+              '◄ Inicie sesión o registrese',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w400,
+                letterSpacing: 0.3,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? kGreyText
+                    : kGreySoft,
+              ),
             ),
           ],
         ),
@@ -146,8 +154,9 @@ class _StartPageState extends State<StartPage> {
           IconButton(
             tooltip: 'Buscar',
             icon: const Icon(Icons.search),
-            onPressed: () {}, // futuro buscador
+            onPressed: () {},
           ),
+          const GlyphFilter(size: 20),
           ThemeToggle(
             color: cs.onSurface,
             size: 22,
@@ -159,21 +168,38 @@ class _StartPageState extends State<StartPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Grilla vacía (placeholder)
+            // 📌 Imagen principal
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  childAspectRatio: 3,
-                  children: const [],
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/images/ad_start_full.png',
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  ),
                 ),
               ),
             ),
 
-            // Banner inferior (puedes dejar 1 o varias imágenes)
+            // 📌 Texto entre la imagen y el carrusel
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+              child: Text(
+                '¡Apoya este proyecto! Ahorros Bancolombia: ###-###-#####',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? kGreyText
+                      : kGreySoft,
+                ),
+              ),
+            ),
+
+            // 📌 Banner inferior
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: BannerCarousel(

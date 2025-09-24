@@ -143,7 +143,8 @@ class _NewTripPageState extends State<NewTripPage> {
                       label: 'Peso (T)',
                       hint: 'Ej: 32.0',
                       controller: _pesoCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       icon: Icons.scale_outlined,
                     ),
                   ),

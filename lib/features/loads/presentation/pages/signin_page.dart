@@ -1,4 +1,4 @@
-import 'package:bolsa_carga_app/app/theme/theme_conection.dart';
+// lib/features/loads/presentation/pages/signin_page.dart
 import 'package:flutter/material.dart';
 
 // Inputs reutilizables (sin validator por ahora)
@@ -7,7 +7,11 @@ import 'package:bolsa_carga_app/core/widgets/inputs/app_text_field.dart';
 // 🌗 Lunita (toggle claro/oscuro)
 import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
 
-// Términos
+// Botón SSO reutilizable
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/sso_icon_button.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+// ⬇️ importa tu página de términos
 import 'package:bolsa_carga_app/features/loads/presentation/pages/terms_page.dart';
 
 class SignInPage extends StatefulWidget {
@@ -55,36 +59,17 @@ class _SignInPageState extends State<SignInPage> {
     );
   }
 
-  Future<void> _verTerminos() async {
-    final accepted = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const TermsPage()),
-    );
-    if (accepted == true) {
-      setState(() => _acepto = true);
-      // (Opcional) feedback al usuario:
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(content: Text('Has aceptado los términos.')),
-      // );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     const spacing = 12.0;
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final Color bg = isLight ? kGreenStrong : kDeepDarkGreen;
-    final Color fg = isLight ? Colors.white : kGreyText;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Registrarme'),
         centerTitle: true,
         actions: [
-          ThemeToggle(
-            color: Theme.of(context).colorScheme.onSurface,
-            size: 22,
-          ),
+          ThemeToggle(color: theme.colorScheme.onSurface, size: 22),
           const SizedBox(width: 8),
         ],
       ),
@@ -190,10 +175,18 @@ class _SignInPageState extends State<SignInPage> {
                 ],
               ),
 
-              // Ver términos — CENTRADO (y funcionando)
+              // Ver términos — centrado
               Center(
                 child: TextButton(
-                  onPressed: _verTerminos,
+                  onPressed: () async {
+                    // ⬇️ Navega a TermsPage y espera el resultado (true si aceptó)
+                    final accepted = await Navigator.of(context).push<bool>(
+                      MaterialPageRoute(builder: (_) => const TermsPage()),
+                    );
+                    if (accepted == true) {
+                      setState(() => _acepto = true);
+                    }
+                  },
                   child: const Text('Ver términos.'),
                 ),
               ),
@@ -214,20 +207,16 @@ class _SignInPageState extends State<SignInPage> {
 
               // Botón Continuar — compacto y centrado
               Center(
-               child: SizedBox(
-                 width: 220,
-                 height: 44,
+                child: SizedBox(
+                  width: 220,
+                  height: 44,
                   child: FilledButton(
-                    style: FilledButton.styleFrom(
-                    backgroundColor: bg,      // 👈 color del botón
-                    foregroundColor: fg,      // 👈 color del texto/ícono
-        // opcional: shape, padding, etc.
-      ),
-      onPressed: _continuar,
-      child: const Text('Continuar'),
-    ),
-  ),
-),
+                    onPressed: _continuar,
+                    child: const Text('Continuar'),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // SSO
               const Text('O inicia sesión con una de las siguientes cuentas'),
@@ -235,32 +224,37 @@ class _SignInPageState extends State<SignInPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _ssoBubble('G'),   // Google (placeholder)
+                  SsoIconButton(
+                    icon: FontAwesomeIcons.google,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Google sign-in (pronto)')),
+                      );
+                    },
+                  ),
                   const SizedBox(width: 16),
-                  _ssoBubble('MS'),  // Microsoft (placeholder)
+                  SsoIconButton(
+                    icon: FontAwesomeIcons.microsoft,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Microsoft sign-in (pronto)')),
+                      );
+                    },
+                  ),
                   const SizedBox(width: 16),
-                  _ssoBubble(''),  // Apple (placeholder)
+                  SsoIconButton(
+                    icon: FontAwesomeIcons.apple,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Apple sign-in (pronto)')),
+                      );
+                    },
+                  ),
                 ],
               ),
               const SizedBox(height: 24),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _ssoBubble(String text) {
-    final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: () {},
-      borderRadius: BorderRadius.circular(24),
-      child: CircleAvatar(
-        radius: 20,
-        backgroundColor: cs.surfaceVariant,
-        child: Text(
-          text,
-          style: const TextStyle(fontWeight: FontWeight.w700),
         ),
       ),
     );

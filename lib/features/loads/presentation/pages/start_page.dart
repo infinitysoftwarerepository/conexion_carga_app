@@ -130,7 +130,7 @@ class _StartPageState extends State<StartPage> {
             const Text(
               'CONEXIÓN CARGA',
               style: TextStyle(
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.3,
               ),
@@ -138,7 +138,7 @@ class _StartPageState extends State<StartPage> {
             Text(
               '◄ Inicie sesión o registrese',
               style: TextStyle(
-                fontSize: 9,
+                fontSize: 12,
                 fontWeight: FontWeight.w400,
                 letterSpacing: 0.3,
                 color: Theme.of(context).brightness == Brightness.light

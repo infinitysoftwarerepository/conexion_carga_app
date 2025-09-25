@@ -24,7 +24,7 @@ import 'package:bolsa_carga_app/features/loads/presentation/pages/start_page.dar
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
-    this.userName = 'Deibizon Londoño', // ← luego vendrá del login
+    this.userName = 'Nombre Apellido Usuario', // ← luego vendrá del login
   });
 
   final String userName;

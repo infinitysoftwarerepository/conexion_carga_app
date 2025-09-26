@@ -1,5 +1,5 @@
 // lib/features/loads/presentation/pages/start_page.dart
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/glyph_filter.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 // 🎨 Colores definidos por ti
@@ -11,14 +11,14 @@ import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle
 // 🟢 Botón reutilizable del menú
 import 'package:bolsa_carga_app/features/loads/presentation/widgets/new_action_fab.dart';
 
+// 🔎 Filtro/ícono (lo dejas como antes)
+import 'package:bolsa_carga_app/features/loads/presentation/widgets/glyph_filter.dart';
+
 // 🖼️ Banner inferior (opcional)
 import 'package:bolsa_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
 
-// 🏠 Página destino al iniciar sesión
-
-// Registro
+// Páginas
 import 'package:bolsa_carga_app/features/loads/presentation/pages/signin_page.dart';
-
 import 'package:bolsa_carga_app/features/loads/presentation/pages/login_page.dart';
 
 class StartPage extends StatefulWidget {
@@ -33,9 +33,62 @@ class StartPage extends StatefulWidget {
   State<StartPage> createState() => _StartPageState();
 }
 
-class _StartPageState extends State<StartPage> {
+class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
   // Key para posicionar el menú justo debajo del muñequito (leading)
   final GlobalKey _profileKey = GlobalKey();
+
+  // -------- Animación del “ad” inicial --------
+  late final AnimationController _dismissCtrl;
+  late final Animation<double> _fade;
+  late final Animation<double> _scale;
+  late final Animation<Offset> _slideDown;
+
+  Timer? _autoTimer;
+  bool _adVisible = true; // cuando termina la animación, lo quitamos del árbol
+
+  @override
+  void initState() {
+    super.initState();
+
+    _dismissCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
+
+    // Curvas suaves y con intención de “absorber”
+    final curved = CurvedAnimation(
+      parent: _dismissCtrl,
+      curve: Curves.easeInOutCubic,
+    );
+
+    // Se desvanece
+    _fade = Tween<double>(begin: 1.0, end: 0.0).animate(curved);
+
+    // Se reduce un poco al irse
+    _scale = Tween<double>(begin: 1.0, end: 0.85).animate(curved);
+
+    // Se desliza HACIA ABAJO: y positivo
+    // 0.40–0.55 funciona bien para que “apunte” al banner sin moverlo.
+    _slideDown =
+        Tween<Offset>(begin: Offset.zero, end: const Offset(0, 0.55)).animate(curved);
+
+    // Auto-cierre a los 10 segundos
+    _autoTimer = Timer(const Duration(seconds: 10), _startDismiss);
+  }
+
+  @override
+  void dispose() {
+    _autoTimer?.cancel();
+    _dismissCtrl.dispose();
+    super.dispose();
+  }
+
+  void _startDismiss() {
+    if (!_adVisible || _dismissCtrl.isAnimating) return;
+    _dismissCtrl.forward().whenComplete(() {
+      if (mounted) setState(() => _adVisible = false);
+    });
+  }
 
   Future<void> _openProfileMenu() async {
     final renderObject = _profileKey.currentContext?.findRenderObject();
@@ -45,7 +98,6 @@ class _StartPageState extends State<StartPage> {
     final Offset topLeft = box.localToGlobal(Offset.zero);
     final Size size = box.size;
 
-    // Posición del popup: justo debajo del botón leading
     final RelativeRect position = RelativeRect.fromLTRB(
       topLeft.dx,
       topLeft.dy + size.height,
@@ -53,7 +105,6 @@ class _StartPageState extends State<StartPage> {
       topLeft.dy,
     );
 
-    // Colores del botón del menú según tema
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final Color bg = isLight ? kGreenStrong : kDeepDarkGreen;
     final Color fg = isLight ? Colors.white : kGreyText;
@@ -115,7 +166,6 @@ class _StartPageState extends State<StartPage> {
         toolbarHeight: 72,
         centerTitle: true,
 
-        // 👤 Muñequito (leading) con key para anclar el menú
         leading: IconButton(
           key: _profileKey,
           tooltip: 'Perfil',
@@ -123,7 +173,6 @@ class _StartPageState extends State<StartPage> {
           onPressed: _openProfileMenu,
         ),
 
-        // Título en dos líneas
         title: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -136,7 +185,7 @@ class _StartPageState extends State<StartPage> {
               ),
             ),
             Text(
-              '◄ Inicie sesión o registrese',
+              widget.userName,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -149,7 +198,6 @@ class _StartPageState extends State<StartPage> {
           ],
         ),
 
-        // 🔍 + 🌙 (ThemeToggle)
         actions: [
           IconButton(
             tooltip: 'Buscar',
@@ -168,23 +216,75 @@ class _StartPageState extends State<StartPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // 📌 Imagen principal
+            // ZONA DE CONTENIDO: el banner permanece abajo.
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.asset(
-                    'assets/images/ad_start_full.png',
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    height: double.infinity,
-                  ),
+                child: Stack(
+                  children: [
+                    // (futuras loads cards irán aquí debajo cuando el ad desaparezca)
+                    // Por ahora sólo un contenedor vacío para reservar espacio.
+                    const SizedBox.expand(),
+
+                    // ---------- AD grande con animación de salida HACIA ABAJO ----------
+                    if (_adVisible)
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SlideTransition(
+                            position: _slideDown,
+                            child: FadeTransition(
+                              opacity: _fade,
+                              child: ScaleTransition(
+                                scale: _scale,
+                                child: Stack(
+                                  children: [
+                                    // Imagen con proporción estable para evitar “saltos”
+                                    // Usamos AspectRatio para mantenerla completa/centrada.
+                                    Positioned.fill(
+                                      child: FittedBox(
+                                        fit: BoxFit.cover,
+                                        child: SizedBox(
+                                          width: 1080, // base “virtual” estable
+                                          height: 1350, // relación vertical (4:5 aprox)
+                                          child: Image.asset(
+                                            'assets/images/ad_start_full.png',
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    // Botón de cerrar (✕)
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Material(
+                                        color: Colors.black.withOpacity(0.35),
+                                        shape: const CircleBorder(),
+                                        clipBehavior: Clip.antiAlias,
+                                        child: InkWell(
+                                          onTap: _startDismiss,
+                                          child: const Padding(
+                                            padding: EdgeInsets.all(8),
+                                            child: Icon(Icons.close,
+                                                size: 20, color: Colors.white),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
 
-            // 📌 Texto entre la imagen y el carrusel
+            // Texto intermedio
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
               child: Text(
@@ -199,17 +299,15 @@ class _StartPageState extends State<StartPage> {
               ),
             ),
 
-            // 📌 Banner inferior
+            // Banner SIEMPRE abajo (no se mueve)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: BannerCarousel(
                 height: 140,
                 imagePaths: const [
                   'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
-                  'assets/images/banner_llantas_30_off.png',
-                  'assets/images/banner_seguros_20.png',
                 ],
-                interval: Duration(seconds: 5),
+                interval: const Duration(seconds: 5),
                 borderRadius: 16,
               ),
             ),

@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-// Inputs reutilizables
-import 'package:bolsa_carga_app/core/widgets/inputs/app_text_field.dart';
-import 'package:bolsa_carga_app/core/widgets/inputs/app_multiline_field.dart';
-import 'package:bolsa_carga_app/core/widgets/inputs/app_datetime_field.dart';
+// Inputs
+import 'package:conexion_carga_app/core/widgets/inputs/app_text_field.dart';
+import 'package:conexion_carga_app/core/widgets/inputs/app_multiline_field.dart';
+import 'package:conexion_carga_app/core/widgets/inputs/app_datetime_field.dart';
 
-// Toggle de tema
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+// Toggle Tema
+import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
 
-// NUEVO: AppBar reutilizable
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
+// AppBar custom (ya lo usas)
+import 'package:conexion_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
+
+// Reutilizables de layout
+import 'package:conexion_carga_app/core/widgets/forms/form_layout.dart';
 
 class NewTripPage extends StatefulWidget {
   const NewTripPage({super.key});
@@ -20,7 +23,6 @@ class NewTripPage extends StatefulWidget {
 }
 
 class _NewTripPageState extends State<NewTripPage> {
-  // Controllers
   final _empresaCtrl = TextEditingController();
   final _origenCtrl = TextEditingController();
   final _destinoCtrl = TextEditingController();
@@ -58,15 +60,14 @@ class _NewTripPageState extends State<NewTripPage> {
   }
 
   void _guardar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Viaje registrado (diseño listo).')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Viaje registrado (diseño listo).')));
     Navigator.of(context).pop();
   }
 
   @override
   Widget build(BuildContext context) {
-    final spacing = 12.0;
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: CustomAppBar(
@@ -75,10 +76,7 @@ class _NewTripPageState extends State<NewTripPage> {
         centerTitle: true,
         title: const Text('Registrar nuevo viaje'),
         actions: [
-          ThemeToggle(
-            color: Theme.of(context).colorScheme.onSurface,
-            size: 22,
-          ),
+          ThemeToggle(color: cs.onSurface, size: 22),
           const SizedBox(width: 8),
         ],
       ),
@@ -87,166 +85,110 @@ class _NewTripPageState extends State<NewTripPage> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              // fila 1
-              Row(
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Empresa / Cliente',
-                      hint: 'Nombre de la empresa o persona',
-                      controller: _empresaCtrl,
-                      icon: Icons.apartment,
-                    ),
-                  ),
-                ],
+              AppTextField(
+                label: 'Empresa / Cliente',
+                hint: 'Nombre de la empresa o persona',
+                controller: _empresaCtrl,
+                icon: Icons.apartment,
               ),
-              SizedBox(height: spacing),
+              const FormGap(),
 
-              // fila 2
-              Row(
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Origen',
-                      hint: 'Ciudad de origen',
-                      controller: _origenCtrl,
-                      icon: Icons.location_on_outlined,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Destino',
-                      hint: 'Ciudad de destino',
-                      controller: _destinoCtrl,
-                      icon: Icons.flag_outlined,
-                    ),
-                  ),
-                ],
+              FormRow2(
+                left: AppTextField(
+                  label: 'Origen',
+                  hint: 'Ciudad de origen',
+                  controller: _origenCtrl,
+                  icon: Icons.location_on_outlined,
+                ),
+                right: AppTextField(
+                  label: 'Destino',
+                  hint: 'Ciudad de destino',
+                  controller: _destinoCtrl,
+                  icon: Icons.flag_outlined,
+                ),
               ),
-              SizedBox(height: spacing),
+              const FormGap(),
 
-              // fila 3
-              Row(
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Tipo de carga',
-                      hint: 'Granel, Paletizado, etc.',
-                      controller: _tipoCargaCtrl,
-                      icon: Icons.inventory_2_outlined,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Peso (T)',
-                      hint: 'Ej: 32.0',
-                      controller: _pesoCtrl,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      icon: Icons.scale_outlined,
-                    ),
-                  ),
-                ],
+              FormRow2(
+                left: AppTextField(
+                  label: 'Tipo de carga',
+                  hint: 'Granel, Paletizado, etc.',
+                  controller: _tipoCargaCtrl,
+                  icon: Icons.inventory_2_outlined,
+                ),
+                right: AppTextField(
+                  label: 'Peso (T)',
+                  hint: 'Ej: 32.0',
+                  controller: _pesoCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  icon: Icons.scale_outlined,
+                ),
               ),
-              SizedBox(height: spacing),
+              const FormGap(),
 
-              // fila 4
-              Row(
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Valor (COP)',
-                      hint: 'Ej: 9.200.000',
-                      controller: _valorCtrl,
-                      keyboardType: TextInputType.number,
-                      icon: Icons.attach_money,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Comercial',
-                      hint: 'Nombre del comercial',
-                      controller: _comercialCtrl,
-                      icon: Icons.badge_outlined,
-                    ),
-                  ),
-                ],
+              FormRow2(
+                left: AppTextField(
+                  label: 'Valor (COP)',
+                  hint: 'Ej: 9.200.000',
+                  controller: _valorCtrl,
+                  keyboardType: TextInputType.number,
+                  icon: Icons.attach_money,
+                ),
+                right: AppTextField(
+                  label: 'Comercial',
+                  hint: 'Nombre del comercial',
+                  controller: _comercialCtrl,
+                  icon: Icons.badge_outlined,
+                ),
               ),
-              SizedBox(height: spacing),
+              const FormGap(),
 
-              // fila 5
-              Row(
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Contacto (teléfono)',
-                      hint: 'Cel del comercial',
-                      controller: _contactoCtrl,
-                      keyboardType: TextInputType.phone,
-                      icon: Icons.phone_outlined,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Conductor',
-                      hint: 'Nombre del conductor',
-                      controller: _conductorCtrl,
-                      icon: Icons.person_outline,
-                    ),
-                  ),
-                ],
+              FormRow2(
+                left: AppTextField(
+                  label: 'Contacto (teléfono)',
+                  hint: 'Cel del comercial',
+                  controller: _contactoCtrl,
+                  keyboardType: TextInputType.phone,
+                  icon: Icons.phone_outlined,
+                ),
+                right: AppTextField(
+                  label: 'Conductor',
+                  hint: 'Nombre del conductor',
+                  controller: _conductorCtrl,
+                  icon: Icons.person_outline,
+                ),
               ),
-              SizedBox(height: spacing),
+              const FormGap(),
 
-              // fila 6
-              Row(
-                children: [
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Vehículo',
-                      hint: 'Placa o identificación',
-                      controller: _vehiculoCtrl,
-                      icon: Icons.local_shipping_outlined,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppTextField(
-                      label: 'Tipo de vehículo',
-                      hint: 'Tracto, Sencillo, etc.',
-                      controller: _tipoVehiculoCtrl,
-                      icon: Icons.agriculture_outlined,
-                    ),
-                  ),
-                ],
+              FormRow2(
+                left: AppTextField(
+                  label: 'Vehículo',
+                  hint: 'Placa o identificación',
+                  controller: _vehiculoCtrl,
+                  icon: Icons.local_shipping_outlined,
+                ),
+                right: AppTextField(
+                  label: 'Tipo de vehículo',
+                  hint: 'Tracto, Sencillo, etc.',
+                  controller: _tipoVehiculoCtrl,
+                  icon: Icons.agriculture_outlined,
+                ),
               ),
-              SizedBox(height: spacing),
+              const FormGap(),
 
-              // fila 7
-              Row(
-                children: [
-                  Expanded(
-                    child: AppDateTimeField(
-                      label: 'Fecha y hora de salida',
-                      controller: _salidaCtrl,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: AppDateTimeField(
-                      label: 'Fecha y hora de llegada (estimada)',
-                      controller: _llegadaCtrl,
-                    ),
-                  ),
-                ],
+              FormRow2(
+                left: AppDateTimeField(
+                  label: 'Fecha y hora de salida',
+                  controller: _salidaCtrl,
+                ),
+                right: AppDateTimeField(
+                  label: 'Fecha y hora de llegada (estimada)',
+                  controller: _llegadaCtrl,
+                ),
               ),
-              SizedBox(height: spacing),
+              const FormGap(),
 
-              // Observaciones
               AppMultilineField(
                 label: 'Observaciones',
                 controller: _obsCtrl,
@@ -256,7 +198,6 @@ class _NewTripPageState extends State<NewTripPage> {
               ),
               const SizedBox(height: 20),
 
-              // Botones
               Row(
                 children: [
                   Expanded(

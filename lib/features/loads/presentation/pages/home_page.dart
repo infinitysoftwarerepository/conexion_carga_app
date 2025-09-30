@@ -1,30 +1,33 @@
 import 'package:flutter/material.dart';
 
 // ✅ Pantalla que lista los viajes (clase: LoadsPage)
-import 'package:bolsa_carga_app/features/loads/presentation/pages/my_loads_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/my_loads_page.dart';
 
 // ✅ Botón de mosaico reutilizable
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/feature_button.dart';
+import 'package:conexion_carga_app/features/loads/presentation/widgets/feature_button.dart';
 
 // ✅ Toggle de tema (sol/luna)
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
 
 // ✅ Carrusel reutilizable del banner inferior
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
+import 'package:conexion_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
 
 // ✅ NUEVO: AppBar reutilizable
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
+import 'package:conexion_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
 
 // ✅ NUEVO: Menú del muñequito reutilizable
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/anchored_menu_button.dart';
+import 'package:conexion_carga_app/features/loads/presentation/widgets/anchored_menu_button.dart';
 
 // ✅ Para regresar a StartPage al cerrar sesión
-import 'package:bolsa_carga_app/features/loads/presentation/pages/start_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/start_page.dart';
+
+// ⬇️ IMPORTA LA NUEVA PÁGINA
+import 'package:conexion_carga_app/features/loads/presentation/pages/checklist_page.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
     super.key,
-    this.userName = 'Nombre Apellido Usuario', // ← luego vendrá del login
+    this.userName = 'Nombre Apellido Usuario',
   });
 
   final String userName;
@@ -36,22 +39,17 @@ class HomeScreen extends StatelessWidget {
         titleSpacing: 0,
         height: 72,
         centerTitle: true,
-
-        // 👤 Menú del muñequito (leading) — reutilizable
         leading: AnchoredMenuButton(
           actions: [
             MenuAction(
               label: 'Ver/editar perfil',
               icon: Icons.person,
-              onPressed: () {
-                // TODO: Abrir pantalla de perfil cuando exista
-              },
+              onPressed: () {},
             ),
             MenuAction(
               label: 'Cerrar sesión',
               icon: Icons.logout,
               onPressed: () {
-                // Limpia el stack y vuelve a StartPage
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const StartPage()),
                   (_) => false,
@@ -60,14 +58,10 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
-
-        // 👈 Título en dos líneas como lo tenías
         title: TwoLineTitle(
           top: 'BIENVENIDO',
           bottom: userName,
         ),
-
-        // 👈 Toggle de tema a la derecha
         actions: [
           ThemeToggle(
             color: Theme.of(context).colorScheme.onSurface,
@@ -91,7 +85,7 @@ class HomeScreen extends StatelessWidget {
                   mainAxisSpacing: 14,
                   childAspectRatio: 3,
                   children: [
-                    // ✅ Activo: navega a la bolsa de carga
+                    // ✅ BOLSA DE CARGA
                     FeatureButton(
                       title: 'BOLSA DE CARGA',
                       subtitle: 'Registro de viajes',
@@ -103,6 +97,20 @@ class HomeScreen extends StatelessWidget {
                         );
                       },
                     ),
+
+                    // ✅ CHECKLIST (AHORA CON onTap Y SIN const)
+                    FeatureButton(
+                      title: 'CHECKLIST',
+                      subtitle: 'Inspección pre-operacional',
+                      enabled: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const ChecklistPage()),
+                        );
+                      },
+                    ),
+
                     const FeatureButton(
                       title: 'ESTOY DISPONIBLE',
                       subtitle: 'Próximamente',

@@ -177,7 +177,6 @@ class AppTheme {
       seedColor: seed,
       brightness: Brightness.dark,
     ).copyWith(
-      background: kDarkBg,        // fondo global
       surface: kDarkSurface,      // superficies por defecto
       onSurface: kOnSurface,      // texto/íconos en superficies
       primary: kGreenStrong,      // acento verde de tu marca

@@ -41,7 +41,7 @@ class SsoIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final Color bg = backgroundColor ?? cs.surfaceVariant;
+    final Color bg = backgroundColor ?? cs.surfaceContainerHighest;
     final Color fg = iconColor ?? cs.onSurfaceVariant;
 
     return InkWell(

@@ -99,7 +99,7 @@ class TwoLineTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final defTop = (theme.textTheme.titleLarge ?? const TextStyle())
-        .copyWith(fontWeight: FontWeight.w700, fontSize: 22, color: theme.colorScheme.onBackground);
+        .copyWith(fontWeight: FontWeight.w700, fontSize: 22, color: theme.colorScheme.onSurface);
     final defBottom = (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(
       fontSize: 13,
       fontStyle: FontStyle.italic,

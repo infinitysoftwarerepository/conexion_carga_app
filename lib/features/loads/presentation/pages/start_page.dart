@@ -3,23 +3,23 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 // 🎨 Colores definidos por ti
-import 'package:bolsa_carga_app/app/theme/theme_conection.dart';
+import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 
 // 🌗 Lunita (toggle claro/oscuro)
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
 
 // 🟢 Botón reutilizable del menú
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/new_action_fab.dart';
+import 'package:conexion_carga_app/features/loads/presentation/widgets/new_action_fab.dart';
 
 // 🔎 Filtro/ícono (lo dejas como antes)
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/glyph_filter.dart';
+import 'package:conexion_carga_app/features/loads/presentation/widgets/glyph_filter.dart';
 
 // 🖼️ Banner inferior (opcional)
-import 'package:bolsa_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
+import 'package:conexion_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
 
 // Páginas
-import 'package:bolsa_carga_app/features/loads/presentation/pages/signin_page.dart';
-import 'package:bolsa_carga_app/features/loads/presentation/pages/login_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/signin_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/login_page.dart';
 
 class StartPage extends StatefulWidget {
   const StartPage({
@@ -73,7 +73,7 @@ class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
         Tween<Offset>(begin: Offset.zero, end: const Offset(0, 0.55)).animate(curved);
 
     // Auto-cierre a los 10 segundos
-    _autoTimer = Timer(const Duration(seconds: 10), _startDismiss);
+    _autoTimer = Timer(const Duration(seconds: 5), _startDismiss);
   }
 
   @override

@@ -1,3 +1,4 @@
+import 'package:conexion_carga_app/features/loads/presentation/pages/checklist/checklist_flow_page.dart';
 import 'package:flutter/material.dart';
 
 // ✅ Pantalla que lista los viajes (clase: LoadsPage)
@@ -23,6 +24,8 @@ import 'package:conexion_carga_app/features/loads/presentation/pages/start_page.
 
 // ⬇️ IMPORTA LA NUEVA PÁGINA
 import 'package:conexion_carga_app/features/loads/presentation/pages/checklist_page.dart';
+
+import 'package:conexion_carga_app/features/loads/presentation/pages/home_page.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
@@ -106,7 +109,7 @@ class HomeScreen extends StatelessWidget {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const ChecklistPage()),
+                          MaterialPageRoute(builder: (_) => const ChecklistFlowPage()),
                         );
                       },
                     ),

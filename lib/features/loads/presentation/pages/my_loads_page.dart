@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 
 // widgets
-import 'package:conexion_carga_app/features/loads/presentation/widgets/glyph_filter.dart';
-import 'package:conexion_carga_app/features/loads/presentation/widgets/glyph_search.dart';
-import 'package:conexion_carga_app/features/loads/presentation/widgets/load_card.dart';
-import 'package:conexion_carga_app/features/loads/presentation/widgets/new_action_fab.dart';
-import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/app/widgets/glyph_filter.dart';
+import 'package:conexion_carga_app/app/widgets/glyph_search.dart';
+import 'package:conexion_carga_app/app/widgets/load_card.dart';
+import 'package:conexion_carga_app/app/widgets/new_action_fab.dart';
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 // pantalla del formulario
 import 'package:conexion_carga_app/features/loads/presentation/pages/new_trip_page.dart';
 
 // NUEVO: AppBar reutilizable
-import 'package:conexion_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
+import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 
 class LoadsPage extends StatefulWidget {
-  const LoadsPage({super.key});
+  const LoadsPage({super.key, required String userName});
 
   @override
   State<LoadsPage> createState() => _LoadsPageState();

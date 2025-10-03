@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
-import 'package:conexion_carga_app/features/loads/presentation/widgets/new_action_fab.dart';
+import 'package:conexion_carga_app/app/widgets/new_action_fab.dart';
 
 /// Acción de menú (texto + ícono + callback)
 class MenuAction {

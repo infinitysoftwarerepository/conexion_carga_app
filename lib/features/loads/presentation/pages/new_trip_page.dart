@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 // Inputs
-import 'package:conexion_carga_app/core/widgets/inputs/app_text_field.dart';
-import 'package:conexion_carga_app/core/widgets/inputs/app_multiline_field.dart';
-import 'package:conexion_carga_app/core/widgets/inputs/app_datetime_field.dart';
+import 'package:conexion_carga_app/app/widgets/inputs/app_text_field.dart';
+import 'package:conexion_carga_app/app/widgets/inputs/app_multiline_field.dart';
+import 'package:conexion_carga_app/app/widgets/inputs/app_datetime_field.dart';
 
 // Toggle Tema
-import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 // AppBar custom (ya lo usas)
-import 'package:conexion_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
+import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 
 // Reutilizables de layout
-import 'package:conexion_carga_app/core/widgets/forms/form_layout.dart';
+import 'package:conexion_carga_app/app/widgets/forms/form_layout.dart';
 
 class NewTripPage extends StatefulWidget {
   const NewTripPage({super.key});

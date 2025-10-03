@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
-import 'package:conexion_carga_app/core/widgets/forms/form_layout.dart';
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/app/widgets/forms/form_layout.dart';
 
 // Reutilizamos tu AppTextField multilineo para comentarios:
-import 'package:conexion_carga_app/core/widgets/inputs/app_multiline_field.dart';
+import 'package:conexion_carga_app/app/widgets/inputs/app_multiline_field.dart';
 
 /// Modelo simple de estado por documento.
 class DocCheck {

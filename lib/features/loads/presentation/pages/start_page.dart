@@ -1,318 +1,199 @@
 // lib/features/loads/presentation/pages/start_page.dart
-import 'dart:async';
 import 'package:flutter/material.dart';
 
-// 🎨 Colores definidos por ti
+/// 🎨 Tema y widgets compartidos de tu app
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
+import 'package:conexion_carga_app/app/widgets/molecules/start_headline.dart';
+import 'package:conexion_carga_app/app/widgets/molecules/bottom_banner_section.dart';
+import 'package:conexion_carga_app/app/widgets/organisms/ad_banner_full_width.dart';
+import 'package:conexion_carga_app/app/widgets/new_action_fab.dart';
+import 'package:conexion_carga_app/app/widgets/glyph_filter.dart';
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
-// 🌗 Lunita (toggle claro/oscuro)
-import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
-
-// 🟢 Botón reutilizable del menú
-import 'package:conexion_carga_app/features/loads/presentation/widgets/new_action_fab.dart';
-
-// 🔎 Filtro/ícono (lo dejas como antes)
-import 'package:conexion_carga_app/features/loads/presentation/widgets/glyph_filter.dart';
-
-// 🖼️ Banner inferior (opcional)
-import 'package:conexion_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
-
-// Páginas
-import 'package:conexion_carga_app/features/loads/presentation/pages/signin_page.dart';
+/// 🔐 Páginas de auth ya existentes
 import 'package:conexion_carga_app/features/loads/presentation/pages/login_page.dart';
 
+/// 🆕 NUEVO: único formulario de registro al que queremos ir directamente
+import 'package:conexion_carga_app/features/loads/presentation/pages/registration_form_page.dart';
+
+/// Página de inicio (StartPage)
+/// Mantiene tu diseño modular:
+/// - AppBar con menú de perfil y toggle de tema
+/// - Anuncio/banner superior a todo lo ancho (sin recortes)
+/// - Sección inferior con texto + carrusel
 class StartPage extends StatefulWidget {
   const StartPage({
     super.key,
     this.userName = '◄ Inicie sesión o registrese',
   });
 
+  /// Subtítulo que muestras bajo el título del AppBar
   final String userName;
 
   @override
   State<StartPage> createState() => _StartPageState();
 }
 
-class _StartPageState extends State<StartPage> with TickerProviderStateMixin {
-  // Key para posicionar el menú justo debajo del muñequito (leading)
+class _StartPageState extends State<StartPage> {
+  /// Clave para poder abrir el menú contextual (popup) justo debajo del ícono
   final GlobalKey _profileKey = GlobalKey();
 
-  // -------- Animación del “ad” inicial --------
-  late final AnimationController _dismissCtrl;
-  late final Animation<double> _fade;
-  late final Animation<double> _scale;
-  late final Animation<Offset> _slideDown;
-
-  Timer? _autoTimer;
-  bool _adVisible = true; // cuando termina la animación, lo quitamos del árbol
-
   @override
-  void initState() {
-    super.initState();
-
-    _dismissCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 650),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: _buildAppBar(),
+      body: SafeArea(
+        child: Column(
+          children: const [
+            // Parte superior con el anuncio
+            Expanded(child: _TopAd()),
+            // Parte inferior (texto + carrusel de logos/banners)
+            BottomBannerSection(donationNumber: '008-168-23331',),
+          ],
+        ),
+      ),
     );
+  }
 
-    // Curvas suaves y con intención de “absorber”
-    final curved = CurvedAnimation(
-      parent: _dismissCtrl,
-      curve: Curves.easeInOutCubic,
+  // ────────────────────────────────────────────────────────────────────────────
+  // APP BAR
+  // ────────────────────────────────────────────────────────────────────────────
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      // Color del ícono/título según tema actual
+      foregroundColor:
+          Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white,
+      toolbarHeight: 72,
+      centerTitle: true,
+
+      // Ícono de “perfil” que abre el menú de Acciones (Iniciar sesión / Registrarse)
+      leading: IconButton(
+        key: _profileKey,
+        tooltip: 'Perfil',
+        icon: const Icon(Icons.person_outline),
+        onPressed: _openProfileMenu, // ← abrimos el popup justo debajo del ícono
+      ),
+
+      // Título reutilizable con subtítulo (tu componente StartHeadline)
+      title: StartHeadline(subtitle: widget.userName),
+
+      // Acciones a la derecha del AppBar: buscar, filtros y el toggle de tema
+      actions: const [
+        Icon(Icons.search),
+        SizedBox(width: 4),
+        GlyphFilter(size: 20),
+        // No forzamos color: ThemeToggle pinta luna negra en claro / sol blanco en oscuro
+        ThemeToggle(size: 22),
+        SizedBox(width: 8),
+      ],
     );
-
-    // Se desvanece
-    _fade = Tween<double>(begin: 1.0, end: 0.0).animate(curved);
-
-    // Se reduce un poco al irse
-    _scale = Tween<double>(begin: 1.0, end: 0.85).animate(curved);
-
-    // Se desliza HACIA ABAJO: y positivo
-    // 0.40–0.55 funciona bien para que “apunte” al banner sin moverlo.
-    _slideDown =
-        Tween<Offset>(begin: Offset.zero, end: const Offset(0, 0.55)).animate(curved);
-
-    // Auto-cierre a los 10 segundos
-    _autoTimer = Timer(const Duration(seconds: 5), _startDismiss);
   }
 
-  @override
-  void dispose() {
-    _autoTimer?.cancel();
-    _dismissCtrl.dispose();
-    super.dispose();
+  // ────────────────────────────────────────────────────────────────────────────
+  // MENÚ DE PERFIL (mostrado debajo del ícono leading)
+  // ────────────────────────────────────────────────────────────────────────────
+
+  /// Botón compactado para meter dentro del PopupMenu.
+  PopupMenuEntry<void> _menuItem({
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+    required Color bg,
+    required Color fg,
+    EdgeInsets padding = const EdgeInsets.fromLTRB(12, 12, 12, 12),
+  }) {
+    return PopupMenuItem<void>(
+      padding: EdgeInsets.zero,
+      child: Padding(
+        padding: padding,
+        child: NewActionFab(
+          label: label,
+          icon: icon,
+          backgroundColor: bg,
+          foregroundColor: fg,
+          onTap: onTap,
+        ),
+      ),
+    );
   }
 
-  void _startDismiss() {
-    if (!_adVisible || _dismissCtrl.isAnimating) return;
-    _dismissCtrl.forward().whenComplete(() {
-      if (mounted) setState(() => _adVisible = false);
-    });
+  /// Helper para navegar a una página con MaterialPageRoute.
+  void _push(Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
 
+  /// Abre el popup “anclado” a la posición del botón de perfil.
   Future<void> _openProfileMenu() async {
-    final renderObject = _profileKey.currentContext?.findRenderObject();
-    if (renderObject is! RenderBox) return;
+    // 1) Calculamos la posición del icono “perfil”
+    final ro = _profileKey.currentContext?.findRenderObject();
+    if (ro is! RenderBox) return;
 
-    final box = renderObject;
-    final Offset topLeft = box.localToGlobal(Offset.zero);
-    final Size size = box.size;
-
-    final RelativeRect position = RelativeRect.fromLTRB(
+    final topLeft = ro.localToGlobal(Offset.zero);
+    final size = ro.size;
+    final position = RelativeRect.fromLTRB(
       topLeft.dx,
-      topLeft.dy + size.height,
+      topLeft.dy + size.height, // Colocar el menú justo DEBAJO del ícono
       topLeft.dx + size.width,
       topLeft.dy,
     );
 
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final Color bg = isLight ? kGreenStrong : kDeepDarkGreen;
-    final Color fg = isLight ? Colors.white : kGreyText;
+    // 2) Colores del botón del menú (verde marca en claro, verde profundo en oscuro)
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final bg = isLight ? kGreenStrong : kDeepDarkGreen;
+    final fg = isLight ? Colors.white : kGreyText;
 
+    // 3) Mostramos el menú con dos acciones.
+    //    👉 Aquí es donde cambiamos la acción “Registrarse” para ir DIRECTO
+    //    al nuevo RegistrationFormPage (saltándonos la pantalla de elegir rol).
     await showMenu<void>(
       context: context,
       position: position,
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      items: <PopupMenuEntry<void>>[
-        PopupMenuItem<void>(
-          padding: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: NewActionFab(
-              label: 'Iniciar sesión',
-              icon: Icons.login,
-              backgroundColor: bg,
-              foregroundColor: fg,
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                );
-              },
-            ),
-          ),
+      items: [
+        _menuItem(
+          label: 'Iniciar sesión',
+          icon: Icons.login,
+          bg: bg,
+          fg: fg,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+          onTap: () {
+            Navigator.pop(context);         // cerramos popup
+            _push(const LoginPage());       // → Login
+          },
         ),
-        PopupMenuItem<void>(
-          padding: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: NewActionFab(
-              label: 'Registrarse',
-              icon: Icons.person_add,
-              backgroundColor: bg,
-              foregroundColor: fg,
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const SignInPage()),
-                );
-              },
-            ),
-          ),
+        _menuItem(
+          label: 'Registrarse',
+          icon: Icons.person_add,
+          bg: bg,
+          fg: fg,
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          onTap: () {
+            Navigator.pop(context);         // cerramos popup
+            // 👉 Navegamos DIRECTO al formulario único de registro
+            _push(const RegistrationFormPage());
+          },
         ),
       ],
     );
   }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// WIDGET PRIVADO: Parte superior con el anuncio a todo lo ancho (sin recortar)
+// ──────────────────────────────────────────────────────────────────────────────
+class _TopAd extends StatelessWidget {
+  const _TopAd();
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Scaffold(
-      appBar: AppBar(
-        foregroundColor:
-            Theme.of(context).brightness == Brightness.light ? Colors.black : Colors.white,
-        toolbarHeight: 72,
-        centerTitle: true,
-
-        leading: IconButton(
-          key: _profileKey,
-          tooltip: 'Perfil',
-          icon: const Icon(Icons.person_outline),
-          onPressed: _openProfileMenu,
-        ),
-
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'CONEXIÓN CARGA',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-              ),
-            ),
-            Text(
-              widget.userName,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
-                letterSpacing: 0.3,
-                color: Theme.of(context).brightness == Brightness.light
-                    ? kGreyText
-                    : kGreySoft,
-              ),
-            ),
-          ],
-        ),
-
-        actions: [
-          IconButton(
-            tooltip: 'Buscar',
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
-          const GlyphFilter(size: 20),
-          ThemeToggle(
-            color: cs.onSurface,
-            size: 22,
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ZONA DE CONTENIDO: el banner permanece abajo.
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Stack(
-                  children: [
-                    // (futuras loads cards irán aquí debajo cuando el ad desaparezca)
-                    // Por ahora sólo un contenedor vacío para reservar espacio.
-                    const SizedBox.expand(),
-
-                    // ---------- AD grande con animación de salida HACIA ABAJO ----------
-                    if (_adVisible)
-                      Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: SlideTransition(
-                            position: _slideDown,
-                            child: FadeTransition(
-                              opacity: _fade,
-                              child: ScaleTransition(
-                                scale: _scale,
-                                child: Stack(
-                                  children: [
-                                    // Imagen con proporción estable para evitar “saltos”
-                                    // Usamos AspectRatio para mantenerla completa/centrada.
-                                    Positioned.fill(
-                                      child: FittedBox(
-                                        fit: BoxFit.cover,
-                                        child: SizedBox(
-                                          width: 1080, // base “virtual” estable
-                                          height: 1350, // relación vertical (4:5 aprox)
-                                          child: Image.asset(
-                                            'assets/images/ad_start_full.png',
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    // Botón de cerrar (✕)
-                                    Positioned(
-                                      top: 8,
-                                      right: 8,
-                                      child: Material(
-                                        color: Colors.black.withOpacity(0.35),
-                                        shape: const CircleBorder(),
-                                        clipBehavior: Clip.antiAlias,
-                                        child: InkWell(
-                                          onTap: _startDismiss,
-                                          child: const Padding(
-                                            padding: EdgeInsets.all(8),
-                                            child: Icon(Icons.close,
-                                                size: 20, color: Colors.white),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Texto intermedio
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-              child: Text(
-                '¡Apoya este proyecto! Ahorros Bancolombia: ###-###-#####',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Theme.of(context).brightness == Brightness.light
-                      ? kGreyText
-                      : kGreySoft,
-                ),
-              ),
-            ),
-
-            // Banner SIEMPRE abajo (no se mueve)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: BannerCarousel(
-                height: 140,
-                imagePaths: const [
-                  'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
-                ],
-                interval: const Duration(seconds: 5),
-                borderRadius: 16,
-              ),
-            ),
-          ],
-        ),
+    // Separación inferior para que no quede pegado al carrusel inferior
+    return const Padding(
+      padding: EdgeInsets.only(bottom: 8),
+      child: AdBannerFullWidth(
+        imageAsset: 'assets/images/ad_start_full.png',
+        // Este widget ya maneja proporciones, animación y botón de cierre (✕).
+        // Asegúrate de que internamente use `BoxFit.contain` para ver la imagen completa.
       ),
     );
   }

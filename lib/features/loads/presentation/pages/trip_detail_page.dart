@@ -3,10 +3,10 @@ import 'package:intl/intl.dart';
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 
 // Toggle de tema
-import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 // NUEVO: AppBar reutilizable
-import 'package:conexion_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
+import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 
 final _money = NumberFormat.currency(locale: 'es_CO', symbol: r'$');
 

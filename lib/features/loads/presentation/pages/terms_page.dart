@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 // 🌗 Lunita (toggle claro/oscuro)
-import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 
 

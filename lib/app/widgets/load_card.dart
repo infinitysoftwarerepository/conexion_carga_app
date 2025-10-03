@@ -4,7 +4,7 @@ import 'package:intl/intl.dart';
 
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/trip_detail_page.dart';
-import 'package:conexion_carga_app/features/loads/presentation/widgets/countdown_bar.dart';
+import 'package:conexion_carga_app/app/widgets/countdown_bar.dart';
 
 /// Formato de moneda COP sin decimales
 final _money = NumberFormat.currency(

@@ -5,19 +5,19 @@ import 'package:flutter/material.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/my_loads_page.dart';
 
 // ✅ Botón de mosaico reutilizable
-import 'package:conexion_carga_app/features/loads/presentation/widgets/feature_button.dart';
+import 'package:conexion_carga_app/app/widgets/feature_button.dart';
 
 // ✅ Toggle de tema (sol/luna)
-import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 // ✅ Carrusel reutilizable del banner inferior
-import 'package:conexion_carga_app/features/loads/presentation/widgets/banner_carousel.dart';
+import 'package:conexion_carga_app/app/widgets/banner_carousel.dart';
 
 // ✅ NUEVO: AppBar reutilizable
-import 'package:conexion_carga_app/features/loads/presentation/widgets/custom_app_bar.dart';
+import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 
 // ✅ NUEVO: Menú del muñequito reutilizable
-import 'package:conexion_carga_app/features/loads/presentation/widgets/anchored_menu_button.dart';
+import 'package:conexion_carga_app/app/widgets/anchored_menu_button.dart';
 
 // ✅ Para regresar a StartPage al cerrar sesión
 import 'package:conexion_carga_app/features/loads/presentation/pages/start_page.dart';
@@ -96,7 +96,7 @@ class HomeScreen extends StatelessWidget {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const LoadsPage()),
+                          MaterialPageRoute(builder: (_) => const LoadsPage(userName: 'Nombre de Usuario',)),
                         );
                       },
                     ),
@@ -117,7 +117,7 @@ class HomeScreen extends StatelessWidget {
                     const FeatureButton(
                       title: 'ESTOY DISPONIBLE',
                       subtitle: 'Próximamente',
-                      enabled: false,
+                      enabled: true,
                     ),
                     const FeatureButton(
                       title: 'CUMPLIDOS',

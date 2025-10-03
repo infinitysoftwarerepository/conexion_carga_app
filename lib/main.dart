@@ -6,7 +6,7 @@ import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 
 /// 2) 🌗 Controlador + widget del toggle (claro/oscuro)
 /// Aquí está el ValueNotifier y el botón que pusimos para cambiar de tema.
-import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 /// 3) 🏠 Pantalla inicial REAL
 /// Ojo: la carpeta correcta es `screens` y el archivo `home_screen.dart`.

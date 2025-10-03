@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../app/theme/theme_conection.dart';
+import '../theme/theme_conection.dart';
 
 /// Botón “pastilla” inspirado en el mock.
 /// Versión compacta: altura reducida, texto a la izquierda,

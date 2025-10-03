@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:conexion_carga_app/features/loads/presentation/widgets/nav_arrow_button.dart';
+import 'package:conexion_carga_app/app/widgets/nav_arrow_button.dart';
 import 'package:flutter/material.dart';
 
 // Si ya creaste las flechas como widget reutilizable, deja este import.

@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 
 // 🌗 Toggle de tema
-import 'package:conexion_carga_app/features/loads/presentation/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
-// 🏠 Pantalla de destino cuando el login “pasa”
-import 'package:conexion_carga_app/features/loads/presentation/pages/home_page.dart';
+
 
 // Botón SSO reutilizable
-import 'package:conexion_carga_app/features/loads/presentation/widgets/sso_icon_button.dart';
+import 'package:conexion_carga_app/app/widgets/sso_icon_button.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/my_loads_page.dart';
+
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// Login UI minimalista, listo para conectar backend.
@@ -65,7 +66,7 @@ class _LoginPageState extends State<LoginPage> {
     // Simulación de éxito inmediato:
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => const HomeScreen(userName: 'Nombre Usuario'),
+        builder: (_) => const LoadsPage(userName: 'Nombre Usuario'),
       ),
     );
   }

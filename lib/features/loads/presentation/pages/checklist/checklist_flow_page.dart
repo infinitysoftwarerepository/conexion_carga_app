@@ -1,7 +1,7 @@
 // lib/features/loads/presentation/pages/checklist/checklist_flow_page.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../widgets/theme_toggle.dart';
+import '../../../../../app/widgets/theme_toggle.dart';
 import 'models/checklist_models.dart';
 import 'steps/step1_info_basica.dart';
 import 'steps/step2_docs_vigencia.dart';

@@ -6,21 +6,17 @@ import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 // 🌗 Toggle de tema
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
-
-
-// Botón SSO reutilizable
+// Botón SSO reutilizable (iconitos debajo)
 import 'package:conexion_carga_app/app/widgets/sso_icon_button.dart';
-import 'package:conexion_carga_app/features/loads/presentation/pages/my_loads_page.dart';
-
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-/// Login UI minimalista, listo para conectar backend.
-/// - Email + Password con validación en vivo de forma, sin bloquear el flujo.
-/// - Botón “Enviar” habilitado si los dos campos son válidos.
-/// - Gradiente verde (dark/ligth) en el panel.
-/// - Lunita en AppBar para cambiar tema.
-/// IMPORTANTE: Aquí NO se hace autenticación real.
-///             Conectar backend dentro de `_trySubmit()` cuando corresponda.
+// 🔐 Llamadas al backend (login)
+import 'package:conexion_carga_app/features/auth/data/auth_api.dart';
+
+/// Pantalla de inicio de sesión:
+/// - Email + Password con validación de forma.
+/// - Llama a AuthApi.login() y, si es OK, cierra la pantalla con `Navigator.pop(true)`.
+/// - StartPage escucha la sesión y mostrará "Bienvenido, {nombre}" automáticamente.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -31,18 +27,20 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   // Controllers
   final _emailCtrl = TextEditingController();
-  final _passCtrl  = TextEditingController();
+  final _passCtrl = TextEditingController();
 
   // Mostrar/ocultar password
   bool _showPass = false;
 
-  // Regex “popular” para forma de email a nivel de UI (rápida y suficiente).
-  // Acepta cualquier usuario + @ + dominio + TLD (no fuerza .com para ser realista).
+  // Flag de envío para deshabilitar botón y mostrar spinner
+  bool _isSubmitting = false;
+
+  // Regex popular para forma de email
   static final RegExp _emailRe = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
-  // Flags derivados (se recalculan en build vía getters)
+  // Validaciones rápidas de UI
   bool get _emailOk => _emailRe.hasMatch(_emailCtrl.text.trim());
-  bool get _passOk  => _passCtrl.text.trim().length >= 3;
+  bool get _passOk => _passCtrl.text.trim().length >= 3;
 
   @override
   void dispose() {
@@ -51,24 +49,40 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  /// Punto único para conectar el backend más adelante.
-  /// - Aquí harás la llamada a tu API, manejo de tokens, errores, etc.
-  /// - Si la API responde OK, navegas a Home.
+  /// Llama al backend. Si responde OK:
+  /// - Guarda sesión (AuthApi ya guarda en AuthSession)
+  /// - Cierra esta página devolviendo `true`
   Future<void> _trySubmit() async {
-    if (!_emailOk || !_passOk) {
+    final email = _emailCtrl.text.trim();
+    final pass = _passCtrl.text.trim();
+
+    if (email.isEmpty || pass.isEmpty || !_emailOk || !_passOk) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Revisa usuario y contraseña.')),
       );
       return;
     }
 
-    // TODO(backend): reemplazar este bloque por la llamada real (await auth.login(...))
-    // Simulación de éxito inmediato:
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => const LoadsPage(userName: 'Nombre Usuario'),
-      ),
-    );
+    setState(() => _isSubmitting = true);
+    try {
+      final api = const AuthApi(); // usa Env.baseUrl internamente
+      final user = await api.login(email: email, password: pass);
+
+      if (!mounted) return;
+      // Vuelve a StartPage; allí el ValueListenable mostrará "Bienvenido, {nombre}".
+      Navigator.of(context).pop(true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Bienvenido ${user.firstName}!')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -141,7 +155,7 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _emailCtrl,
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
-                          onChanged: (_) => setState(() {}), // error en vivo
+                          onChanged: (_) => setState(() {}),
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.white,
@@ -151,7 +165,9 @@ class _LoginPageState extends State<LoginPage> {
                               borderRadius: BorderRadius.circular(28),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
                           ),
                         ),
                         AnimatedSwitcher(
@@ -207,18 +223,21 @@ class _LoginPageState extends State<LoginPage> {
                             suffixIcon: IconButton(
                               tooltip: _showPass ? 'Ocultar' : 'Mostrar',
                               icon: Icon(
-                                _showPass ? Icons.visibility_off : Icons.visibility,
+                                _showPass
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
                               ),
-                              onPressed: () => setState(() {
-                                _showPass = !_showPass;
-                              }),
+                              onPressed: () =>
+                                  setState(() => _showPass = !_showPass),
                             ),
                             hintText: ' escriba su contraseña',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(28),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
                           ),
                         ),
                         AnimatedSwitcher(
@@ -261,14 +280,21 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               elevation: 2,
                             ),
-                            onPressed: _trySubmit,
-                            child: const Text(
-                              'Enviar',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
+                            onPressed: _isSubmitting ? null : _trySubmit,
+                            child: _isSubmitting
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child:
+                                        CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Text(
+                                    'Enviar',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
@@ -278,7 +304,8 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 16),
 
                   // ===== SSO debajo del cajón =====
-                  const Text('O inicia sesión con una de las siguientes cuentas'),
+                  const Text(
+                      'O inicia sesión con una de las siguientes cuentas'),
                   const SizedBox(height: 8),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

@@ -9,7 +9,15 @@ import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/terms_page.dart';
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 
-/// --- Modelo simple para la Ocupación (para poder crecer luego) ---
+// ⬇️ Controlador de registro + modelo de respuesta
+import 'package:conexion_carga_app/features/auth/presentation/registration_controller.dart';
+import 'package:conexion_carga_app/features/auth/data/models/user_out.dart';
+
+// ⬇️ API de verificación y pantalla de verificación
+import 'package:conexion_carga_app/features/auth/data/verification_api.dart';
+import 'package:conexion_carga_app/features/auth/presentation/verify_code_page.dart';
+
+/// ---------------- Ocupación ----------------
 class OccupationOption {
   final String id;
   final String label;
@@ -32,7 +40,22 @@ const kOccupationOptions = <OccupationOption>[
     label: 'Soy independiente',
     requiresCompany: false,
   ),
-  // Agrega más opciones aquí cuando quieras
+];
+
+/// ---------------- Tipo de documento (Colombia) ----------------
+class DocTypeOption {
+  final String id;    // 'CC', 'CE', 'NIT', 'PA', 'TI', 'PPT'
+  final String label; // Texto visible
+  const DocTypeOption(this.id, this.label);
+}
+
+const kDocTypes = <DocTypeOption>[
+  DocTypeOption('CC',  'Cédula de ciudadanía'),
+  DocTypeOption('CE',  'Cédula de extranjería'),
+  DocTypeOption('NIT', 'NIT'),
+  DocTypeOption('PA',  'Pasaporte'),
+  DocTypeOption('TI',  'Tarjeta de identidad'),
+  DocTypeOption('PPT', 'Permiso por Protección Temporal (PPT)'),
 ];
 
 class RegistrationFormPage extends StatefulWidget {
@@ -42,16 +65,16 @@ class RegistrationFormPage extends StatefulWidget {
 }
 
 class _RegistrationFormPageState extends State<RegistrationFormPage> {
-  // ── Estado de los 2 campos superiores ───────────────────────────────────────
-  OccupationOption? _selectedOccupation; // ⬅️ SIN valor inicial → muestra hint
+  // Controladores / estado
+  final _controller = RegistrationController();
+  final _verificationApi = const VerificationApi();
+
+  OccupationOption? _selectedOccupation; // null → hint
   final _companyCtrl = TextEditingController();
 
-  bool get _needsCompany =>
-      _selectedOccupation != null && _selectedOccupation!.requiresCompany;
+  DocTypeOption? _selectedDocType; // null → hint
 
-  // ── Resto de campos del formulario ─────────────────────────────────────────
   final _emailCtrl = TextEditingController();
-  final _tipoIdCtrl = TextEditingController();
   final _numIdCtrl = TextEditingController();
   final _nombresCtrl = TextEditingController();
   final _apellidosCtrl = TextEditingController();
@@ -61,12 +84,15 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
   bool _obscurePass = true;
   bool _obscureConfirm = true;
   bool _acepto = false;
+  bool _isLoading = false;
+
+  bool get _needsCompany =>
+      _selectedOccupation != null && _selectedOccupation!.requiresCompany;
 
   @override
   void dispose() {
     _companyCtrl.dispose();
     _emailCtrl.dispose();
-    _tipoIdCtrl.dispose();
     _numIdCtrl.dispose();
     _nombresCtrl.dispose();
     _apellidosCtrl.dispose();
@@ -75,16 +101,98 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     super.dispose();
   }
 
-  void _continuar() {
+  Future<void> _continuar() async {
+    FocusScope.of(context).unfocus();
+
+    // Validaciones rápidas de UI
+    if (_selectedDocType == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Selecciona el tipo de identificación.')),
+      );
+      return;
+    }
+    if ((_numIdCtrl.text.trim()).isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa tu número de identificación.')),
+      );
+      return;
+    }
     if (!_acepto) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Debes aceptar los términos.')),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Registro enviado (diseño listo).')),
-    );
+
+    setState(() => _isLoading = true);
+    try {
+      final isCompany = _selectedOccupation?.requiresCompany == true;
+
+      // Por ahora usamos el número de documento como "phone".
+      final UserOut user = await _controller.submit(
+        context: context,
+        email: _emailCtrl.text.trim(),
+        firstName: _nombresCtrl.text.trim(),
+        lastName: _apellidosCtrl.text.trim(),
+        phone: _numIdCtrl.text.trim(),
+        isCompany: isCompany,
+        companyName: _companyCtrl.text.trim(),
+        password: _passCtrl.text,
+        confirmPassword: _confirmCtrl.text,
+        acceptedTerms: _acepto,
+        // Si luego quieres enviar docType/docNumber al backend,
+        // amplía el schema y pásalos desde aquí.
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Usuario creado: ${user.email}')),
+        );
+      }
+
+      // Reenvío opcional de código (seguro incluso si el back ya lo envió en /register)
+      try {
+        await _verificationApi.requestEmailCode(user.email);
+      } catch (_) {}
+
+      if (!mounted) return;
+      final verified = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => VerifyCodePage(
+            email: user.email,
+            displayName: user.firstName,
+          ),
+        ),
+      );
+
+      if (verified == true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('¡Correo verificado!')),
+        );
+      }
+
+      // Limpia formulario
+      _emailCtrl.clear();
+      _numIdCtrl.clear();
+      _nombresCtrl.clear();
+      _apellidosCtrl.clear();
+      _passCtrl.clear();
+      _confirmCtrl.clear();
+      _companyCtrl.clear();
+      setState(() {
+        _selectedOccupation = null;
+        _selectedDocType = null;
+        _acepto = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -92,7 +200,6 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     final cs = Theme.of(context).colorScheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
 
-    // Fondo de “bloque destacado” para los 2 campos de arriba.
     final headerColor = isLight
         ? kBrandGreen.withOpacity(0.35)
         : kDeepDarkGreen.withOpacity(0.7);
@@ -106,11 +213,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         child: Column(
           children: [
-            // ─────────────────────────────────────────────────────────────────
-            // 1) BLOQUE SUPERIOR: Ocupación + Empresa
-            //    • Etiquetas por fuera (encima del cajón)
-            //    • Empresa desactivada hasta elegir “Trabajo para una empresa”
-            // ─────────────────────────────────────────────────────────────────
+            // ── Bloque superior: Ocupación + Empresa ─────────────────────────
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
@@ -129,7 +232,6 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // ---------- Etiqueta fuera del campo (no flotante) ----------
                   Text(
                     'Ocupación:',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -138,16 +240,14 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                   ),
                   const SizedBox(height: 6),
 
-                  // ---------- Dropdown Ocupación (sin valor inicial) ----------
                   DropdownButtonFormField<OccupationOption>(
-                    value: _selectedOccupation, // null → muestra hint
+                    value: _selectedOccupation,
                     decoration: InputDecoration(
-                      hintText: '¿A qué te dedicas?', // ⬅️ como pediste
+                      hintText: '¿A qué te dedicas?',
                       prefixIcon: const Icon(Icons.work_outline),
                       filled: true,
-                      fillColor: isLight
-                          ? Colors.white
-                          : cs.surface.withOpacity(0.95),
+                      fillColor:
+                          isLight ? Colors.white : cs.surface.withOpacity(0.95),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -158,20 +258,16 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                     ),
                     icon: const Icon(Icons.arrow_drop_down),
                     items: kOccupationOptions
-                        .map(
-                          (o) => DropdownMenuItem(
-                            value: o,
-                            child: Text(o.label),
-                          ),
-                        )
+                        .map((o) => DropdownMenuItem(
+                              value: o,
+                              child: Text(o.label),
+                            ))
                         .toList(),
                     onChanged: (o) {
                       setState(() {
                         _selectedOccupation = o;
-                        // Si NO requiere empresa, limpiar y asegurar bloqueado:
                         if (!_needsCompany) {
                           _companyCtrl.clear();
-                          // quitar foco por si estaba activo
                           FocusScope.of(context).unfocus();
                         }
                       });
@@ -180,7 +276,6 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
 
                   const SizedBox(height: 12),
 
-                  // ---------- Etiqueta empresa (por fuera) ----------
                   Text(
                     'Nombre de la empresa:',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -189,11 +284,9 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                   ),
                   const SizedBox(height: 6),
 
-                  // ---------- TextField Empresa (totalmente desactivado) ----------
                   TextField(
                     controller: _companyCtrl,
-                    enabled:
-                        _needsCompany, // false → no se puede escribir ni enfocar
+                    enabled: _needsCompany,
                     decoration: InputDecoration(
                       hintText: '¿En qué empresa trabajas?',
                       prefixIcon: const Icon(Icons.apartment_outlined),
@@ -218,9 +311,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
 
             const SizedBox(height: 16),
 
-            // ─────────────────────────────────────────────────────────────────
-            // 2) FORMULARIO PRINCIPAL (sin cambios de fondo)
-            // ─────────────────────────────────────────────────────────────────
+            // ── Formulario principal ─────────────────────────────────────────
             AppTextField(
               label: 'Correo Electrónico*',
               hint: 'tucorreo@dominio.com',
@@ -231,12 +322,51 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
             ),
             const SizedBox(height: 12),
 
-            AppTextField(
-              label: 'Tipo de identificación*',
-              hint: 'Cédula de ciudadanía, NIT, etc.',
-              controller: _tipoIdCtrl,
-              icon: Icons.badge_outlined,
-              textInputAction: TextInputAction.next,
+            // Etiqueta
+            Text(
+              'Tipo de identificación*',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.onSurface.withOpacity(0.75),
+                  ),
+            ),
+            const SizedBox(height: 6),
+
+            // ✅ Dropdown sin overflow
+            DropdownButtonFormField<DocTypeOption>(
+              value: _selectedDocType,     // null → muestra hint
+              isExpanded: true,            // usa todo el ancho → evita overflow
+              decoration: InputDecoration(
+                hintText: null,            // usamos el 'hint:' del widget
+                prefixIcon: const Icon(Icons.badge_outlined),
+                filled: true,
+                fillColor: isLight
+                    ? Colors.white
+                    : cs.surface.withOpacity(0.95),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              ),
+              hint: const Text(
+                'Seleccione el tipo de documento',
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                softWrap: false,
+              ),
+              icon: const Icon(Icons.arrow_drop_down),
+              items: kDocTypes
+                  .map((d) => DropdownMenuItem(
+                        value: d,
+                        child: Text(
+                          d.label,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          softWrap: false,
+                        ),
+                      ))
+                  .toList(),
+              onChanged: (v) => setState(() => _selectedDocType = v),
             ),
             const SizedBox(height: 12),
 
@@ -291,8 +421,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
               obscureText: _obscureConfirm,
               suffixIcon: IconButton(
                 tooltip: _obscureConfirm ? 'Mostrar' : 'Ocultar',
-                icon:
-                    Icon(_obscureConfirm ? Icons.visibility : Icons.visibility_off),
+                icon: Icon(_obscureConfirm ? Icons.visibility : Icons.visibility_off),
                 onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
               ),
               textInputAction: TextInputAction.done,
@@ -342,8 +471,14 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                 width: 220,
                 height: 44,
                 child: FilledButton(
-                  onPressed: _continuar,
-                  child: const Text('Continuar'),
+                  onPressed: _isLoading ? null : _continuar,
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Continuar'),
                 ),
               ),
             ),

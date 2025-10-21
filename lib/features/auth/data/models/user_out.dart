@@ -1,35 +1,38 @@
-
-/// Representa el shape que devuelve tu backend para un usuario
-/// (response_model=UserOut).
+// lib/features/auth/data/models/user_out.dart
 class UserOut {
-  final String id;
+  final String id;        // ← UUID como string
   final String email;
-  final String firstName;
-  final String lastName;
-  final String phone;
-  final bool isCompany;
-  final String? companyName;
-  final bool active;
+  final String? firstName;
+  final String? lastName;
+  final bool? active;
+  final int? points;
 
   UserOut({
     required this.id,
     required this.email,
-    required this.firstName,
-    required this.lastName,
-    required this.phone,
-    required this.isCompany,
-    required this.active,
-    this.companyName,
+    this.firstName,
+    this.lastName,
+    this.active,
+    this.points,
   });
 
-  factory UserOut.fromJson(Map<String, dynamic> j) => UserOut(
-        id: j['id'] as String,
-        email: j['email'] as String,
-        firstName: j['first_name'] as String,
-        lastName: j['last_name'] as String,
-        phone: j['phone'] as String,
-        isCompany: j['is_company'] as bool,
-        companyName: j['company_name'] as String?,
-        active: j['active'] as bool,
-      );
+  factory UserOut.fromJson(Map<String, dynamic> json) {
+    return UserOut(
+      id: json['id'] as String,                    // ← antes int
+      email: json['email'] as String,
+      firstName: json['first_name'] as String?,
+      lastName: json['last_name'] as String?,
+      active: json['active'] as bool?,
+      points: json['points'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        "id": id,
+        "email": email,
+        "first_name": firstName,
+        "last_name": lastName,
+        "active": active,
+        "points": points,
+      };
 }

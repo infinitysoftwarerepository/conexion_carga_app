@@ -2,18 +2,18 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-// Reusables (ajusta rutas si tus paths difieren)
+// Reusables
 import 'package:conexion_carga_app/app/widgets/inputs/app_text_field.dart';
 import 'package:conexion_carga_app/app/widgets/sso_icon_button.dart';
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/terms_page.dart';
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 
-// ⬇️ Controlador de registro + modelo de respuesta
+// Controlador de registro + modelo de respuesta
 import 'package:conexion_carga_app/features/auth/presentation/registration_controller.dart';
 import 'package:conexion_carga_app/features/auth/data/models/user_out.dart';
 
-// ⬇️ API de verificación y pantalla de verificación
+// API de verificación y pantalla de verificación
 import 'package:conexion_carga_app/features/auth/data/verification_api.dart';
 import 'package:conexion_carga_app/features/auth/presentation/verify_code_page.dart';
 
@@ -81,6 +81,9 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
 
+  // Referido por (opcional)
+  final _referrerEmailCtrl = TextEditingController();
+
   bool _obscurePass = true;
   bool _obscureConfirm = true;
   bool _acepto = false;
@@ -98,10 +101,12 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     _apellidosCtrl.dispose();
     _passCtrl.dispose();
     _confirmCtrl.dispose();
+    _referrerEmailCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _continuar() async {
+    if (_isLoading) return;
     FocusScope.of(context).unfocus();
 
     // Validaciones rápidas de UI
@@ -128,7 +133,6 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     try {
       final isCompany = _selectedOccupation?.requiresCompany == true;
 
-      // Por ahora usamos el número de documento como "phone".
       final UserOut user = await _controller.submit(
         context: context,
         email: _emailCtrl.text.trim(),
@@ -140,23 +144,16 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
         password: _passCtrl.text,
         confirmPassword: _confirmCtrl.text,
         acceptedTerms: _acepto,
-        // Si luego quieres enviar docType/docNumber al backend,
-        // amplía el schema y pásalos desde aquí.
+        referrerEmail: _referrerEmailCtrl.text.trim().isEmpty
+            ? null
+            : _referrerEmailCtrl.text.trim(),
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Usuario creado: ${user.email}')),
-        );
-      }
-
-      // Reenvío opcional de código (seguro incluso si el back ya lo envió en /register)
-      try {
-        await _verificationApi.requestEmailCode(user.email);
-      } catch (_) {}
-
       if (!mounted) return;
-      final verified = await Navigator.of(context).push<bool>(
+
+      // NO reenviar código: el backend ya lo envió en /register
+      // Navegación directa a Verify
+      await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => VerifyCodePage(
             email: user.email,
@@ -164,31 +161,28 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
           ),
         ),
       );
+    } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
 
-      if (verified == true && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('¡Correo verificado!')),
+      // Si el backend dijo 400 por email ya registrado, referrer inválido, etc.
+      if (msg.toLowerCase().contains('email already registered')) {
+        // (opcional) intentamos reenviar para ese email por si caducó
+        try { await _verificationApi.requestEmailCode(_emailCtrl.text.trim()); } catch (_) {}
+        if (!mounted) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => VerifyCodePage(
+              email: _emailCtrl.text.trim(),
+              displayName: _nombresCtrl.text.trim(),
+            ),
+          ),
         );
+        return;
       }
 
-      // Limpia formulario
-      _emailCtrl.clear();
-      _numIdCtrl.clear();
-      _nombresCtrl.clear();
-      _apellidosCtrl.clear();
-      _passCtrl.clear();
-      _confirmCtrl.clear();
-      _companyCtrl.clear();
-      setState(() {
-        _selectedOccupation = null;
-        _selectedDocType = null;
-        _acepto = false;
-      });
-    } catch (e) {
+      // Muestra el mensaje que devolvió el backend
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -322,26 +316,27 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
             ),
             const SizedBox(height: 12),
 
-            // Etiqueta
-            Text(
-              'Tipo de identificación*',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: cs.onSurface.withOpacity(0.75),
-                  ),
+            // Etiqueta (alineada a la izquierda)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Tipo de identificación*',
+                textAlign: TextAlign.left,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: cs.onSurface.withOpacity(0.75),
+                    ),
+              ),
             ),
             const SizedBox(height: 6),
 
-            // ✅ Dropdown sin overflow
+            // Dropdown sin overflow
             DropdownButtonFormField<DocTypeOption>(
-              value: _selectedDocType,     // null → muestra hint
-              isExpanded: true,            // usa todo el ancho → evita overflow
+              value: _selectedDocType,
+              isExpanded: true,
               decoration: InputDecoration(
-                hintText: null,            // usamos el 'hint:' del widget
                 prefixIcon: const Icon(Icons.badge_outlined),
                 filled: true,
-                fillColor: isLight
-                    ? Colors.white
-                    : cs.surface.withOpacity(0.95),
+                fillColor: isLight ? Colors.white : cs.surface.withOpacity(0.95),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -425,6 +420,17 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                 onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
               ),
               textInputAction: TextInputAction.done,
+            ),
+            const SizedBox(height: 12),
+
+            // Referido por (opcional)
+            AppTextField(
+              label: 'Referido por',
+              hint: 'Correo del usuario que te refirió (opcional)',
+              controller: _referrerEmailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              icon: Icons.alternate_email_outlined,
+              textInputAction: TextInputAction.next,
             ),
             const SizedBox(height: 12),
 

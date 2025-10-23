@@ -12,6 +12,8 @@ import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 import 'package:conexion_carga_app/features/loads/presentation/pages/login_page.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/registration_form_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/my_loads_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/points_page.dart'; // ⬅️ NUEVA IMPORTACIÓN
 
 import 'package:conexion_carga_app/core/auth_session.dart';
 
@@ -51,7 +53,7 @@ class _StartPageState extends State<StartPage> {
     return AppBar(
       foregroundColor: isLight ? Colors.black : Colors.white,
       toolbarHeight: 72,
-      centerTitle: true,
+      centerTitle: false,
       leading: IconButton(
         key: _profileKey,
         tooltip: 'Perfil',
@@ -100,6 +102,35 @@ class _StartPageState extends State<StartPage> {
     );
   }
 
+  /// Item visualmente deshabilitado (no clickeable)
+  PopupMenuEntry<void> _menuItemDisabled({
+    required String label,
+    required IconData icon,
+    required Color bg,
+    required Color fg,
+    EdgeInsets padding = const EdgeInsets.fromLTRB(12, 0, 12, 0),
+  }) {
+    return PopupMenuItem<void>(
+      enabled: false,
+      padding: EdgeInsets.zero,
+      child: Padding(
+        padding: padding,
+        child: Opacity(
+          opacity: 0.45,
+          child: IgnorePointer(
+            child: NewActionFab(
+              label: label,
+              icon: icon,
+              backgroundColor: bg,
+              foregroundColor: fg,
+              onTap: () {}, // ignorado por IgnorePointer
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _push(Widget page) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
   }
@@ -129,7 +160,51 @@ class _StartPageState extends State<StartPage> {
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       items: user != null
+          // ─────────────── MENÚ CUANDO HAY SESIÓN ───────────────
           ? <PopupMenuEntry<void>>[
+              _menuItem(
+                label: '+ Registrar viaje',
+                icon: Icons.add_road,
+                bg: bg,
+                fg: fg,
+                onTap: () {
+                  Navigator.pop(context);
+
+                  // Nombre para saludo en LoadsPage
+                  final u = AuthSession.instance.user.value;
+                  final name = [
+                    (u?.firstName ?? '').trim(),
+                    (u?.lastName ?? '').trim(),
+                  ].where((s) => s.isNotEmpty).join(' ');
+
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => LoadsPage(
+                        userName: name.isEmpty ? 'Usuario' : name,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _menuItemDisabled(
+                label: 'Editar perfil',
+                icon: Icons.edit_outlined,
+                bg: bg,
+                fg: fg,
+              ),
+              _menuItem(
+                label: 'Mis puntos',
+                icon: Icons.stars_outlined,
+                bg: bg,
+                fg: fg,
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PointsPage()),
+                  );
+                },
+              ),
+              const PopupMenuDivider(height: 8),
               _menuItem(
                 label: 'Cerrar sesión',
                 icon: Icons.logout,
@@ -144,6 +219,7 @@ class _StartPageState extends State<StartPage> {
                 },
               ),
             ]
+          // ─────────────── MENÚ CUANDO NO HAY SESIÓN ───────────────
           : <PopupMenuEntry<void>>[
               _menuItem(
                 label: 'Iniciar sesión',

@@ -1,19 +1,18 @@
+// lib/features/loads/presentation/pages/new_trip_page.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
 
-// Inputs
 import 'package:conexion_carga_app/app/widgets/inputs/app_text_field.dart';
 import 'package:conexion_carga_app/app/widgets/inputs/app_multiline_field.dart';
 import 'package:conexion_carga_app/app/widgets/inputs/app_datetime_field.dart';
-
-// Toggle Tema
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
-
-// AppBar custom (ya lo usas)
 import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
-
-// Reutilizables de layout
 import 'package:conexion_carga_app/app/widgets/forms/form_layout.dart';
+
+import 'package:conexion_carga_app/core/env.dart';
+import 'package:conexion_carga_app/core/auth_session.dart';
 
 class NewTripPage extends StatefulWidget {
   const NewTripPage({super.key});
@@ -23,7 +22,6 @@ class NewTripPage extends StatefulWidget {
 }
 
 class _NewTripPageState extends State<NewTripPage> {
-  final _empresaCtrl = TextEditingController();
   final _origenCtrl = TextEditingController();
   final _destinoCtrl = TextEditingController();
   final _tipoCargaCtrl = TextEditingController();
@@ -40,9 +38,10 @@ class _NewTripPageState extends State<NewTripPage> {
   final _llegadaCtrl = TextEditingController();
   final _obsCtrl = TextEditingController();
 
+  bool _premium = false; // viaje estándar por defecto
+
   @override
   void dispose() {
-    _empresaCtrl.dispose();
     _origenCtrl.dispose();
     _destinoCtrl.dispose();
     _tipoCargaCtrl.dispose();
@@ -59,10 +58,88 @@ class _NewTripPageState extends State<NewTripPage> {
     super.dispose();
   }
 
-  void _guardar() {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Viaje registrado (diseño listo).')));
-    Navigator.of(context).pop();
+  DateTime? _parseDT(String v) {
+    try {
+      return DateFormat('dd/MM/yyyy HH:mm').parseStrict(v);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _guardar() async {
+    FocusScope.of(context).unfocus();
+
+    // Validaciones mínimas
+    if (_origenCtrl.text.trim().isEmpty ||
+        _destinoCtrl.text.trim().isEmpty ||
+        _tipoCargaCtrl.text.trim().isEmpty ||
+        _pesoCtrl.text.trim().isEmpty ||
+        _valorCtrl.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Completa los campos obligatorios.')),
+      );
+      return;
+    }
+
+    final salida = _parseDT(_salidaCtrl.text);
+    if (salida == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fecha de salida inválida.')),
+      );
+      return;
+    }
+    final llegada = _llegadaCtrl.text.trim().isEmpty ? null : _parseDT(_llegadaCtrl.text);
+
+    final tok = AuthSession.instance.token ?? '';
+    final me = AuthSession.instance.user.value;
+
+    final uri = Uri.parse('${Env.baseUrl}/api/loads');
+    final body = {
+      "empresa_id": null, // si luego guardas empresa del usuario, la envías aquí
+      "origen": _origenCtrl.text.trim(),
+      "destino": _destinoCtrl.text.trim(),
+      "tipo_carga": _tipoCargaCtrl.text.trim(),
+      "peso": double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
+      "valor": int.tryParse(_valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ?? 0,
+      // comercial_id lo pone el backend con el usuario actual
+      "conductor": _conductorCtrl.text.trim().isEmpty ? null : _conductorCtrl.text.trim(),
+      "vehiculo_id": _vehiculoCtrl.text.trim().isEmpty ? null : _vehiculoCtrl.text.trim(),
+      "fecha_salida": salida.toIso8601String(),
+      "fecha_llegada_estimada": llegada?.toIso8601String(),
+      "premium_trip": _premium,
+    };
+
+    try {
+      final res = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              if (tok.isNotEmpty) 'Authorization': 'Bearer $tok',
+            },
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 12));
+
+      if (res.statusCode != 201) {
+        String msg = 'No se pudo registrar el viaje (${res.statusCode}).';
+        try {
+          final m = jsonDecode(res.body);
+          if (m is Map && m['detail'] != null) msg = m['detail'].toString();
+        } catch (_) {}
+        throw Exception(msg);
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Viaje registrado para ${me?.firstName ?? 'ti'}.')),
+      );
+      if (mounted) Navigator.of(context).pop(true); // vuelve a la lista
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   @override
@@ -85,14 +162,6 @@ class _NewTripPageState extends State<NewTripPage> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              AppTextField(
-                label: 'Empresa / Cliente',
-                hint: 'Nombre de la empresa o persona',
-                controller: _empresaCtrl,
-                icon: Icons.apartment,
-              ),
-              const FormGap(),
-
               FormRow2(
                 left: AppTextField(
                   label: 'Origen',
@@ -112,7 +181,7 @@ class _NewTripPageState extends State<NewTripPage> {
               FormRow2(
                 left: AppTextField(
                   label: 'Tipo de carga',
-                  hint: 'Granel, Paletizado, etc.',
+                  hint: 'Granel, Contenedor, etc.',
                   controller: _tipoCargaCtrl,
                   icon: Icons.inventory_2_outlined,
                 ),
@@ -120,8 +189,7 @@ class _NewTripPageState extends State<NewTripPage> {
                   label: 'Peso (T)',
                   hint: 'Ej: 32.0',
                   controller: _pesoCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   icon: Icons.scale_outlined,
                 ),
               ),
@@ -196,7 +264,56 @@ class _NewTripPageState extends State<NewTripPage> {
                 minLines: 4,
                 maxLines: 8,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+
+              // ── Tipo de viaje (horizontal, estándar/premium) ──────────────
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Tipo de viaje', style: Theme.of(context).textTheme.titleSmall),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? cs.surfaceVariant.withOpacity(0.35)
+                      : cs.surfaceVariant.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    // Estándar (siempre activo)
+                    Row(
+                      children: [
+                        Radio<bool>(
+                          value: false,
+                          groupValue: _premium,
+                          onChanged: (_) {}, // bloqueado: siempre estándar (por ahora)
+                        ),
+                        const Text('Viaje estándar'),
+                      ],
+                    ),
+                    const SizedBox(width: 14),
+                    // Premium (deshabilitado visualmente)
+                    Opacity(
+                      opacity: 0.45,
+                      child: Row(
+                        children: [
+                          Radio<bool>(
+                            value: true,
+                            groupValue: _premium,
+                            onChanged: null, // deshabilitado hasta suscripción
+                          ),
+                          const Text('Viaje premium'),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
 
               Row(
                 children: [

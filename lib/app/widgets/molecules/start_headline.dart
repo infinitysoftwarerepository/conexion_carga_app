@@ -13,7 +13,7 @@ class StartHeadline extends StatelessWidget {
       children: [
         const Text(
           'CONEXIÓN CARGA',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 0.3),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 0.3),
         ),
         Text(
           subtitle,

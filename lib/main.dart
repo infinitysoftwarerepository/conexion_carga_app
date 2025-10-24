@@ -38,7 +38,7 @@ class Bootstrap extends StatelessWidget {
           themeMode: mode,
 
           // 👇 StartPage ahora reacciona sola a la sesión (no hace falta pasar nombre)
-          home: const StartPage(userName: '◄ Inicie sesión o registrese'),
+          home: const StartPage(userName: 'Inicie sesión o registrese'),
         );
       },
     );

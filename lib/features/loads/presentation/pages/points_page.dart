@@ -192,8 +192,8 @@ class _Body extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
             child: Row(
               children: const [
-                _HeaderCell(label: 'Top', flex: 16),
-                _HeaderCell(label: 'e-mail', flex: 38),
+                _HeaderCell(label: 'TOP', flex: 16),
+                _HeaderCell(label: 'Usuario', flex: 38),
                 _HeaderCell(label: 'ID', flex: 24),
                 _HeaderCell(label: 'Puntos', flex: 22),
               ],

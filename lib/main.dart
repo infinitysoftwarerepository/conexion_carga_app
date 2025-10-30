@@ -13,7 +13,7 @@ import 'package:conexion_carga_app/features/loads/presentation/pages/start_page.
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AuthSession.instance.load(); // <-- añade esto
+  await AuthSession.instance.hydrate();// <-- añade esto
   runApp(const Bootstrap());
 }
 

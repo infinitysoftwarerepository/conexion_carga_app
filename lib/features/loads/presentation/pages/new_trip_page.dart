@@ -24,6 +24,7 @@ class NewTripPage extends StatefulWidget {
 class _NewTripPageState extends State<NewTripPage> {
   final _origenCtrl = TextEditingController();
   final _destinoCtrl = TextEditingController();
+
   final _tipoCargaCtrl = TextEditingController();
   final _pesoCtrl = TextEditingController();
   final _valorCtrl = TextEditingController();
@@ -32,6 +33,7 @@ class _NewTripPageState extends State<NewTripPage> {
   final _conductorCtrl = TextEditingController();
   final _vehiculoCtrl = TextEditingController();
   final _tipoVehiculoCtrl = TextEditingController();
+
   final _salidaCtrl = TextEditingController(
     text: DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now()),
   );
@@ -39,6 +41,45 @@ class _NewTripPageState extends State<NewTripPage> {
   final _obsCtrl = TextEditingController();
 
   bool _premium = false; // viaje estándar por defecto
+
+  // Catálogos locales
+  static const List<String> _kTiposCarga = [
+    'Granel sólido',
+    'Granel líquido',
+    'Contenedor FCL',
+    'Contenedor LCL',
+    'Fraccionada',
+    'Peligrosa',
+    'Refrigerada',
+    'Perecedera',
+    'Material de construcción',
+    'Agroindustrial',
+    'Maquinaria',
+    'Sobredimensionada',
+    'Extrapesada',
+    'Animales vivos',
+    'Residuos no peligrosos',
+    'Residuos peligrosos',
+  ];
+
+  static const List<String> _kTiposVehiculo = [
+    'NHR',
+    'NPR',
+    'Turbo sencillo',
+    'Doble troque',
+    'Cuatro brazos',
+    'Patineta 252',
+    'Poderosa 253',
+    'Tractocamión 352',
+    'Tractocamión 353',
+    'Vehículo rígido de dos ejes',
+    'Vehículo rígido de tres ejes',
+    'Tractocamión articulado 2S1',
+    'Tractocamión articulado 3S2',
+    'Tracto',
+    'Sencillo',
+    'Camión 3.5T',
+  ];
 
   @override
   void dispose() {
@@ -88,24 +129,32 @@ class _NewTripPageState extends State<NewTripPage> {
       );
       return;
     }
-    final llegada = _llegadaCtrl.text.trim().isEmpty ? null : _parseDT(_llegadaCtrl.text);
+    final llegada =
+        _llegadaCtrl.text.trim().isEmpty ? null : _parseDT(_llegadaCtrl.text);
 
     final tok = AuthSession.instance.token ?? '';
     final me = AuthSession.instance.user.value;
 
     final uri = Uri.parse('${Env.baseUrl}/api/loads');
     final body = {
-      "empresa_id": null, // si luego guardas empresa del usuario, la envías aquí
+      "empresa_id": null,
       "origen": _origenCtrl.text.trim(),
       "destino": _destinoCtrl.text.trim(),
       "tipo_carga": _tipoCargaCtrl.text.trim(),
       "peso": double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
       "valor": int.tryParse(_valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ?? 0,
-      // comercial_id lo pone el backend con el usuario actual
+
+      // TODOS los campos del formulario
+      "comercial": _comercialCtrl.text.trim().isEmpty ? null : _comercialCtrl.text.trim(),
+      "contacto": _contactoCtrl.text.trim().isEmpty ? null : _contactoCtrl.text.trim(),
       "conductor": _conductorCtrl.text.trim().isEmpty ? null : _conductorCtrl.text.trim(),
       "vehiculo_id": _vehiculoCtrl.text.trim().isEmpty ? null : _vehiculoCtrl.text.trim(),
+      "tipo_vehiculo": _tipoVehiculoCtrl.text.trim().isEmpty ? null : _tipoVehiculoCtrl.text.trim(),
+
       "fecha_salida": salida.toIso8601String(),
       "fecha_llegada_estimada": llegada?.toIso8601String(),
+
+      "observaciones": _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
       "premium_trip": _premium,
     };
 
@@ -179,11 +228,12 @@ class _NewTripPageState extends State<NewTripPage> {
               const FormGap(),
 
               FormRow2(
-                left: AppTextField(
+                left: _AutoCompleteField(
                   label: 'Tipo de carga',
                   hint: 'Granel, Contenedor, etc.',
                   controller: _tipoCargaCtrl,
                   icon: Icons.inventory_2_outlined,
+                  options: _kTiposCarga,
                 ),
                 right: AppTextField(
                   label: 'Peso (T)',
@@ -236,11 +286,12 @@ class _NewTripPageState extends State<NewTripPage> {
                   controller: _vehiculoCtrl,
                   icon: Icons.local_shipping_outlined,
                 ),
-                right: AppTextField(
+                right: _AutoCompleteField(
                   label: 'Tipo de vehículo',
                   hint: 'Tracto, Sencillo, etc.',
                   controller: _tipoVehiculoCtrl,
                   icon: Icons.agriculture_outlined,
+                  options: _kTiposVehiculo,
                 ),
               ),
               const FormGap(),
@@ -266,7 +317,6 @@ class _NewTripPageState extends State<NewTripPage> {
               ),
               const SizedBox(height: 12),
 
-              // ── Tipo de viaje (horizontal, estándar/premium) ──────────────
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Tipo de viaje', style: Theme.of(context).textTheme.titleSmall),
@@ -282,7 +332,6 @@ class _NewTripPageState extends State<NewTripPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 child: Row(
                   children: [
-                    // Estándar (siempre activo)
                     Row(
                       children: [
                         Radio<bool>(
@@ -294,16 +343,11 @@ class _NewTripPageState extends State<NewTripPage> {
                       ],
                     ),
                     const SizedBox(width: 14),
-                    // Premium (deshabilitado visualmente)
                     Opacity(
                       opacity: 0.45,
                       child: Row(
                         children: [
-                          Radio<bool>(
-                            value: true,
-                            groupValue: _premium,
-                            onChanged: null, // deshabilitado hasta suscripción
-                          ),
+                          Radio<bool>(value: true, groupValue: _premium, onChanged: null),
                           const Text('Viaje premium'),
                         ],
                       ),
@@ -318,18 +362,11 @@ class _NewTripPageState extends State<NewTripPage> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('Cancelar'),
-                    ),
+                    child: OutlinedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: FilledButton.icon(
-                      onPressed: _guardar,
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Registrar'),
-                    ),
+                    child: FilledButton.icon(onPressed: _guardar, icon: const Icon(Icons.check_circle_outline), label: const Text('¡ Publicar !')),
                   ),
                 ],
               ),
@@ -337,6 +374,109 @@ class _NewTripPageState extends State<NewTripPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Campo de texto con Autocomplete (catálogo + texto libre) — FIX con controller + focusNode
+class _AutoCompleteField extends StatefulWidget {
+  const _AutoCompleteField({
+    required this.label,
+    required this.hint,
+    required this.controller,
+    required this.icon,
+    required this.options,
+  });
+
+  final String label;
+  final String hint;
+  final TextEditingController controller;
+  final IconData icon;
+  final List<String> options;
+
+  @override
+  State<_AutoCompleteField> createState() => _AutoCompleteFieldState();
+}
+
+class _AutoCompleteFieldState extends State<_AutoCompleteField> {
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
+
+  Iterable<String> _filter(String q) {
+    final s = q.trim().toLowerCase();
+    if (s.isEmpty) return widget.options;
+    return widget.options.where((o) => o.toLowerCase().contains(s));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return RawAutocomplete<String>(
+      textEditingController: widget.controller,
+      focusNode: _focus,
+      optionsBuilder: (TextEditingValue tev) => _filter(tev.text),
+      displayStringForOption: (s) => s,
+      fieldViewBuilder: (context, textCtrl, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: widget.controller,
+          focusNode: _focus,
+          onTap: () {
+            if (widget.controller.text.isEmpty) {
+              widget.controller.value = widget.controller.value.copyWith(
+                text: widget.controller.text,
+                selection: TextSelection.collapsed(offset: widget.controller.text.length),
+              );
+            }
+          },
+          decoration: InputDecoration(
+            labelText: widget.label,
+            hintText: widget.hint,
+            prefixIcon: Icon(widget.icon, color: cs.onSurfaceVariant),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          ),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, opts) {
+        final theme = Theme.of(context);
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240, minWidth: 280),
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                itemCount: opts.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, i) {
+                  final opt = opts.elementAt(i);
+                  return ListTile(
+                    dense: true,
+                    title: Text(opt),
+                    onTap: () {
+                      widget.controller.text = opt;
+                      widget.controller.selection = TextSelection.collapsed(offset: opt.length);
+                      onSelected(opt);
+                      _focus.requestFocus();
+                    },
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+      onSelected: (_) {},
     );
   }
 }

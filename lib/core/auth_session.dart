@@ -1,47 +1,48 @@
 // lib/core/auth_session.dart
-//
-// Estado global de autenticación sencillo.
-// - Guarda/lee usuario y token en SharedPreferences.
-// - Expone un ValueNotifier<AuthUser?> para que las pantallas reaccionen.
-//
-// Uso típico:
-//   await AuthSession.instance.load();        // en main() antes de runApp()
-//   AuthSession.instance.signIn(authUser);    // tras login OK
-//   AuthSession.instance.signOut();           // cerrar sesión
-//
-// Este archivo NO hace llamadas HTTP. Eso está en data/auth_api.dart.
-
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Modelo simple del usuario en sesión.
-/// Debe acoplarse a lo que te devuelve el backend.
+import 'env.dart';
+
 class AuthUser {
   final String id;
   final String email;
   final String firstName;
   final String lastName;
+  final bool isPremium;
+  final int points;
 
   const AuthUser({
     required this.id,
     required this.email,
     required this.firstName,
     required this.lastName,
+    required this.isPremium,
+    required this.points,
   });
 
-  factory AuthUser.fromJson(Map<String, dynamic> map) => AuthUser(
-        id: map['id']?.toString() ?? '',
-        email: map['email'] ?? '',
-        firstName: map['first_name'] ?? map['firstName'] ?? '',
-        lastName: map['last_name'] ?? map['lastName'] ?? '',
-      );
+  factory AuthUser.fromJson(Map<String, dynamic> j) {
+    return AuthUser(
+      id: (j['id'] ?? '').toString(),
+      email: (j['email'] ?? '').toString(),
+      firstName: (j['first_name'] ?? j['firstName'] ?? '').toString(),
+      lastName: (j['last_name'] ?? j['lastName'] ?? '').toString(),
+      isPremium: j['is_premium'] == true || j['isPremium'] == true,
+      points: (j['points'] is int)
+          ? j['points'] as int
+          : int.tryParse('${j['points'] ?? 0}') ?? 0,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'email': email,
         'first_name': firstName,
         'last_name': lastName,
+        'is_premium': isPremium,
+        'points': points,
       };
 }
 
@@ -49,68 +50,88 @@ class AuthSession {
   AuthSession._();
   static final AuthSession instance = AuthSession._();
 
-  /// Notificador global del usuario autenticado (o null si sin sesión)
+  static const _kTokenKey = 'cc_token_v1';
+  static const _kUserKey = 'cc_user_v1';
+
+  /// Usuario actual. StartPage escucha este ValueListenable.
   final ValueNotifier<AuthUser?> user = ValueNotifier<AuthUser?>(null);
 
-  String? _token;
-  String? get token => _token;
+  /// Token actual en memoria.
+  String? token;
 
-  static const _kUser = 'auth.user';
-  static const _kToken = 'auth.token';
+  /// Restaura token+usuario desde disco y valida el token contra /me.
+  Future<void> hydrate() async {
+    final sp = await SharedPreferences.getInstance();
+    token = sp.getString(_kTokenKey);
+    final rawUser = sp.getString(_kUserKey);
 
-  /// Carga la sesión guardada (si existe). NUNCA lanza excepciones.
-  Future<void> load() async {
-    try {
-      final sp = await SharedPreferences.getInstance();
-
-      final userStr = sp.getString(_kUser);
-      final tok = sp.getString(_kToken);
-
-      if (userStr != null) {
-        try {
-          final map = jsonDecode(userStr) as Map<String, dynamic>;
-          user.value = AuthUser.fromJson(map);
-        } catch (_) {
-          user.value = null;
-        }
-      } else {
+    if (rawUser != null) {
+      try {
+        user.value = AuthUser.fromJson(jsonDecode(rawUser));
+      } catch (_) {
         user.value = null;
       }
+    }
 
-      _token = tok;
-    } catch (_) {
-      // Si algo falla (p.ej. localStorage bloqueado en web),
-      // dejamos la app seguir sin sesión.
+    if (token == null || token!.isEmpty) {
       user.value = null;
-      _token = null;
+      return;
     }
-  }
 
-  /// Guarda sesión después de login.
-  Future<void> signIn(AuthUser u, {required String? token}) async {
-    user.value = u;
-    _token = token;
+    // Verificar token contra /me (aceptamos /api/auth/me o /api/users/me)
     try {
-      final sp = await SharedPreferences.getInstance();
-      await sp.setString(_kUser, jsonEncode(u.toJson()));
-      if (token != null) {
-        await sp.setString(_kToken, token);
-      } else {
-        await sp.remove(_kToken);
-      }
+      final me = await _fetchMe();
+      user.value = me;
+      await _persist(me, token!);
     } catch (_) {
-      // ignoramos persistencia fallida
+      await signOut();
     }
   }
 
-  /// Cierra sesión y limpia storage. No lanza excepciones.
+  /// Firma compatible con tu auth_api.dart:
+  /// guarda token y usuario, notifica a listeners y persiste.
+  Future<void> signIn(AuthUser u, {required String token}) async {
+    this.token = token;
+    user.value = u;
+    await _persist(u, token);
+  }
+
   Future<void> signOut() async {
+    token = null;
     user.value = null;
-    _token = null;
+    final sp = await SharedPreferences.getInstance();
+    await sp.remove(_kTokenKey);
+    await sp.remove(_kUserKey);
+  }
+
+  Future<void> _persist(AuthUser u, String t) async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString(_kTokenKey, t);
+    await sp.setString(_kUserKey, jsonEncode(u.toJson()));
+  }
+
+  /// GET perfil usando el token. Intenta /api/auth/me y si no existe, /api/users/me.
+  Future<AuthUser> _fetchMe() async {
+    final t = token ?? '';
+    if (t.isEmpty) throw Exception('No token');
+
+    Future<AuthUser> hit(String path) async {
+      final res = await http.get(
+        Uri.parse('${Env.baseUrl}$path'),
+        headers: {'Authorization': 'Bearer $t'},
+      );
+      if (res.statusCode != 200) {
+        throw Exception('ME $path ${res.statusCode}');
+      }
+      final map = (jsonDecode(res.body) as Map).cast<String, dynamic>();
+      return AuthUser.fromJson(map);
+    }
+
     try {
-      final sp = await SharedPreferences.getInstance();
-      await sp.remove(_kUser);
-      await sp.remove(_kToken);
-    } catch (_) {}
+      return await hit('/api/auth/me');
+    } catch (_) {
+      // fallback si tu back expone /api/users/me
+      return await hit('/api/users/me');
+    }
   }
 }

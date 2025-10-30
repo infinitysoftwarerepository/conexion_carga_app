@@ -7,8 +7,8 @@ import 'package:conexion_carga_app/core/auth_session.dart';
 
 /// Cliente de autenticación.
 /// Backend esperado:
-///   POST /api/auth/login  -> { token, user:{...} }  ó  { token, ...campos usuario... }
-///   GET  /api/users/me    -> { ...usuario... }  (opcional)
+///   POST /api/auth/login  -> { access_token | token, user:{...} } ó { access_token | token, ...usuario... }
+///   GET  /api/auth/me     -> { ...usuario... }  (o /api/users/me como fallback)
 class AuthApi {
   const AuthApi();
 
@@ -19,19 +19,20 @@ class AuthApi {
   }) async {
     final uri = Uri.parse('${Env.baseUrl}/api/auth/login');
 
+    // JSON; si tu back requiere form-url-encoded, cambia headers/body.
     final res = await http
         .post(
           uri,
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({'email': email, 'password': password}),
         )
-        .timeout(const Duration(seconds: 12));
+        .timeout(const Duration(seconds: 15));
 
     if (res.statusCode == 404) {
       throw Exception(
           '404 Not Found en $uri. Revisa baseUrl y el path /api/auth/login en el backend.');
     }
-    if (res.statusCode != 200) {
+    if (res.statusCode != 200 && res.statusCode != 201) {
       String message = 'No se pudo iniciar sesión (${res.statusCode}).';
       try {
         final obj = jsonDecode(res.body);
@@ -45,7 +46,7 @@ class AuthApi {
     final body = jsonDecode(res.body);
     final (user, token) = _parseLoginPayload(body);
 
-    // ¡OJO! El primer parámetro es posicional (no nombrado).
+    // Firma compatible con tu AuthSession esperado por StartPage.
     await AuthSession.instance.signIn(user, token: token);
     return user;
   }
@@ -57,63 +58,63 @@ class AuthApi {
       throw Exception('No hay sesión.');
     }
 
-    final uri = Uri.parse('${Env.baseUrl}/api/users/me');
-    final res = await http.get(
-      uri,
-      headers: {'Authorization': 'Bearer $tok'},
-    );
-
-    if (res.statusCode != 200) {
-      throw Exception('No fue posible obtener el perfil.');
+    // Intenta /api/auth/me; si no existe prueba /api/users/me
+    Future<AuthUser> hit(String path) async {
+      final res = await http.get(
+        Uri.parse('${Env.baseUrl}$path'),
+        headers: {'Authorization': 'Bearer $tok'},
+      );
+      if (res.statusCode != 200) {
+        throw Exception('No fue posible obtener el perfil ($path).');
+      }
+      final Map<String, dynamic> obj =
+          (jsonDecode(res.body) as Map).cast<String, dynamic>();
+      return AuthUser.fromJson(obj);
     }
 
-    // 👇 Aquí estaba el error: casteamos a Map<String, dynamic>
-    final Map<String, dynamic> obj =
-        (jsonDecode(res.body) as Map).cast<String, dynamic>();
-
-    final user = AuthUser.fromJson(obj);
-
-    // Refresca el usuario en memoria (sin alterar el token)
-    await AuthSession.instance.signIn(user, token: tok);
-    return user;
+    try {
+      final user = await hit('/api/auth/me');
+      await AuthSession.instance.signIn(user, token: tok);
+      return user;
+    } catch (_) {
+      final user = await hit('/api/users/me');
+      await AuthSession.instance.signIn(user, token: tok);
+      return user;
+    }
   }
 
   // --------------------------------------------------------------------------
   // Helpers
   // --------------------------------------------------------------------------
 
-  /// Normaliza payload de login:
-  ///  A) { "token": "...", "user": { ... } }
-  ///  B) { "token": "...", ...campos del usuario... }
+  /// Normaliza payload de login admitiendo:
+  ///  A) { "access_token": "...", "user": { ... } }
+  ///  B) { "access_token": "...", ...usuario... }
+  ///  C) Igual pero con "token" en vez de "access_token".
   (AuthUser, String) _parseLoginPayload(dynamic body) {
+    Map<String, dynamic> m;
     if (body is Map<String, dynamic>) {
-      if (body['user'] != null) {
-        final token = body['token']?.toString() ?? '';
-        final Map<String, dynamic> userMap =
-            (body['user'] as Map).cast<String, dynamic>();
-        final user = AuthUser.fromJson(userMap);
-        return (user, token);
-      }
-      final token = body['token']?.toString() ?? '';
-      final user = AuthUser.fromJson(body);
+      m = body;
+    } else if (body is Map) {
+      m = body.cast<String, dynamic>();
+    } else {
+      throw Exception('Respuesta de login inválida.');
+    }
+
+    final token =
+        (m['access_token'] ?? m['token'] ?? '').toString(); // soporta ambos
+    if (token.isEmpty) {
+      throw Exception('Login sin token en la respuesta.');
+    }
+
+    if (m['user'] != null) {
+      final userMap = (m['user'] as Map).cast<String, dynamic>();
+      final user = AuthUser.fromJson(userMap);
       return (user, token);
     }
 
-    // Si vino como Map<dynamic, dynamic>, también lo aceptamos:
-    if (body is Map) {
-      final m = body.cast<String, dynamic>();
-      if (m['user'] != null) {
-        final token = m['token']?.toString() ?? '';
-        final Map<String, dynamic> userMap =
-            (m['user'] as Map).cast<String, dynamic>();
-        final user = AuthUser.fromJson(userMap);
-        return (user, token);
-      }
-      final token = m['token']?.toString() ?? '';
-      final user = AuthUser.fromJson(m);
-      return (user, token);
-    }
-
-    throw Exception('Respuesta de login inválida.');
+    // Si no viene "user", asumimos que el resto del payload es el usuario.
+    final user = AuthUser.fromJson(m);
+    return (user, token);
   }
 }

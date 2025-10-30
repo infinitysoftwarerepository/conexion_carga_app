@@ -1,4 +1,14 @@
 // lib/features/loads/presentation/pages/start_page.dart
+//
+// StartPage
+// - Invitado: primera fila con 2 botones (Iniciar sesión / Registrarse)
+// - Con sesión: SOLO la primera fila con 3 botones
+//      [+ Registrar viaje]  [Mis viajes]  [Mis puntos]
+//   * "+ Registrar viaje"  -> NewTripPage
+//   * "Mis viajes"         -> LoadsPage   (el widget que tienes en my_loads_page.dart)
+//   * "Mis puntos"         -> PointsPage
+// - El resto de contenido (LoadCards) lo dejamos para 2 columnas más adelante.
+//
 
 import 'package:flutter/material.dart';
 
@@ -12,15 +22,18 @@ import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 import 'package:conexion_carga_app/features/loads/presentation/pages/login_page.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/registration_form_page.dart';
+// En tu proyecto este archivo define el widget LoadsPage:
 import 'package:conexion_carga_app/features/loads/presentation/pages/my_loads_page.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/points_page.dart';
+// Nuevo: registrar viaje directo
+import 'package:conexion_carga_app/features/loads/presentation/pages/new_trip_page.dart';
 
 import 'package:conexion_carga_app/core/auth_session.dart';
 
 class StartPage extends StatefulWidget {
   const StartPage({
     super.key,
-    this.userName = '◄ Inicie sesión o registrese',
+  this.userName = '◄ Inicie sesión o registrese',
   });
 
   final String userName;
@@ -43,7 +56,9 @@ class _StartPageState extends State<StartPage> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 children: [
-                  // Fila 1: dos columnas con CTAs según estado de sesión
+                  // ------------------------------------------------------------------
+                  // Fila #1 (solamente esta fila cambia a 3 columnas si hay sesión)
+                  // ------------------------------------------------------------------
                   ValueListenableBuilder<AuthUser?>(
                     valueListenable: AuthSession.instance.user,
                     builder: (_, user, __) {
@@ -53,7 +68,7 @@ class _StartPageState extends State<StartPage> {
                       final fg = isLight ? Colors.white : kGreyText;
 
                       if (user == null) {
-                        // Invitado: Iniciar sesión / Registrarse
+                        // Invitado: 2 columnas
                         return _TwoButtonGrid(
                           left: FittedBox(
                             fit: BoxFit.scaleDown,
@@ -97,8 +112,9 @@ class _StartPageState extends State<StartPage> {
                           ),
                         );
                       } else {
-                        // Con sesión: Registrar viaje / Mis puntos
-                        return _TwoButtonGrid(
+                        // Con sesión: 3 columnas (SOLO esta primera fila)
+                        return _ThreeButtonGrid(
+                          // 1) + Registrar viaje -> NewTripPage
                           left: FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerLeft,
@@ -108,22 +124,41 @@ class _StartPageState extends State<StartPage> {
                               backgroundColor: bg,
                               foregroundColor: fg,
                               onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      builder: (_) => const NewTripPage()),
+                                );
+                              },
+                            ),
+                          ),
+                          // 2) Mis viajes -> LoadsPage (tu pantalla de mis cargas)
+                          middle: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: NewActionFab(
+                              label: 'Mis viajes',
+                              icon: Icons.local_shipping_outlined,
+                              backgroundColor: bg,
+                              foregroundColor: fg,
+                              onTap: () {
                                 final u = AuthSession.instance.user.value;
-                                final name = [
+                                final userName = [
                                   (u?.firstName ?? '').trim(),
                                   (u?.lastName ?? '').trim(),
                                 ].where((s) => s.isNotEmpty).join(' ');
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => LoadsPage(
-                                      userName:
-                                          name.isEmpty ? 'Usuario' : name,
+                                      userName: userName.isEmpty
+                                          ? 'Usuario'
+                                          : userName,
                                     ),
                                   ),
                                 );
                               },
                             ),
                           ),
+                          // 3) Mis puntos -> PointsPage
                           right: FittedBox(
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerLeft,
@@ -147,12 +182,12 @@ class _StartPageState extends State<StartPage> {
 
                   const SizedBox(height: 8),
 
-                  // 🔜 Aquí luego irán las LoadCards públicas
+                  // 🔜 Aquí luego montamos las LoadCards en 2 columnas.
                 ],
               ),
             ),
 
-            // Promo de 5s pegada al carrusel
+            // Promo pegada al carrusel
             const _TopAd(),
 
             // Carrusel / banner inferior
@@ -162,6 +197,8 @@ class _StartPageState extends State<StartPage> {
       ),
     );
   }
+
+  // ===================== AppBar =====================
 
   PreferredSizeWidget _buildAppBar() {
     final isLight = Theme.of(context).brightness == Brightness.light;
@@ -180,7 +217,7 @@ class _StartPageState extends State<StartPage> {
         },
       ),
 
-      // Título con subtítulo dinámico (envuelto en FittedBox para evitar cortes)
+      // Título con subtítulo dinámico
       title: ValueListenableBuilder<AuthUser?>(
         valueListenable: AuthSession.instance.user,
         builder: (_, user, __) {
@@ -202,6 +239,7 @@ class _StartPageState extends State<StartPage> {
           valueListenable: AuthSession.instance.user,
           builder: (_, user, __) {
             return Row(
+              // ✅ aquí estaba el typo: es MainAxisSize, no "MainSize"
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (user != null) ...[
@@ -279,7 +317,7 @@ class _StartPageState extends State<StartPage> {
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       items: <PopupMenuEntry<void>>[
-        // Editar perfil (siempre deshabilitado por ahora)
+        // Editar perfil (por ahora deshabilitado)
         _menuItem(
           label: 'Editar perfil',
           icon: Icons.edit_outlined,
@@ -289,7 +327,6 @@ class _StartPageState extends State<StartPage> {
           enabled: false,
         ),
         const PopupMenuDivider(height: 8),
-        // Cerrar sesión (habilitado solo si hay sesión)
         _menuItem(
           label: 'Cerrar sesión',
           icon: Icons.logout,
@@ -309,12 +346,13 @@ class _StartPageState extends State<StartPage> {
   }
 }
 
+// ===================== Widgets auxiliares =====================
+
 class _TopAd extends StatelessWidget {
   const _TopAd();
 
   @override
   Widget build(BuildContext context) {
-    // colocado justo encima del carrusel
     return const Padding(
       padding: EdgeInsets.only(top: 4, bottom: 8),
       child: AdBannerFullWidth(
@@ -324,8 +362,7 @@ class _TopAd extends StatelessWidget {
   }
 }
 
-/// Rejilla de 2 columnas para los CTA superiores.
-/// Cada botón va envuelto en FittedBox para evitar desbordes.
+/// Rejilla de 2 columnas (invitado y/o secciones futuras 2-col).
 class _TwoButtonGrid extends StatelessWidget {
   const _TwoButtonGrid({
     required this.left,
@@ -341,11 +378,36 @@ class _TwoButtonGrid extends StatelessWidget {
       crossAxisCount: 2,
       crossAxisSpacing: 12,
       mainAxisSpacing: 12,
-      // Un poco más ancho para reducir la probabilidad de overflow
       childAspectRatio: 3.8,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [left, right],
+    );
+  }
+}
+
+/// Rejilla SOLO para la primera fila cuando hay sesión (3 columnas).
+class _ThreeButtonGrid extends StatelessWidget {
+  const _ThreeButtonGrid({
+    required this.left,
+    required this.middle,
+    required this.right,
+  });
+
+  final Widget left;
+  final Widget middle;
+  final Widget right;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 3, // ← división en 3 SOLO para esta fila
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 3.8,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [left, middle, right],
     );
   }
 }

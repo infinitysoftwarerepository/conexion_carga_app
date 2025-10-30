@@ -82,6 +82,18 @@ class _NewTripPageState extends State<NewTripPage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Prefill del comercial con el nombre completo del usuario autenticado
+    final u = AuthSession.instance.user.value;
+    final fullName = [
+      (u?.firstName ?? '').trim(),
+      (u?.lastName ?? '').trim(),
+    ].where((s) => s.isNotEmpty).join(' ');
+    _comercialCtrl.text = fullName; // editable por el usuario
+  }
+
+  @override
   void dispose() {
     _origenCtrl.dispose();
     _destinoCtrl.dispose();
@@ -142,19 +154,24 @@ class _NewTripPageState extends State<NewTripPage> {
       "destino": _destinoCtrl.text.trim(),
       "tipo_carga": _tipoCargaCtrl.text.trim(),
       "peso": double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
-      "valor": int.tryParse(_valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ?? 0,
+      "valor": int.tryParse(
+              _valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ??
+          0,
 
-      // TODOS los campos del formulario
-      "comercial": _comercialCtrl.text.trim().isEmpty ? null : _comercialCtrl.text.trim(),
-      "contacto": _contactoCtrl.text.trim().isEmpty ? null : _contactoCtrl.text.trim(),
-      "conductor": _conductorCtrl.text.trim().isEmpty ? null : _conductorCtrl.text.trim(),
-      "vehiculo_id": _vehiculoCtrl.text.trim().isEmpty ? null : _vehiculoCtrl.text.trim(),
-      "tipo_vehiculo": _tipoVehiculoCtrl.text.trim().isEmpty ? null : _tipoVehiculoCtrl.text.trim(),
+      // Campos adicionales (opcionales para tu UI/DB actual)
+      "conductor": _conductorCtrl.text.trim().isEmpty
+          ? null
+          : _conductorCtrl.text.trim(),
+      "vehiculo_id": _vehiculoCtrl.text.trim().isEmpty
+          ? null
+          : _vehiculoCtrl.text.trim(),
+      "tipo_vehiculo": _tipoVehiculoCtrl.text.trim().isEmpty
+          ? null
+          : _tipoVehiculoCtrl.text.trim(),
 
       "fecha_salida": salida.toIso8601String(),
       "fecha_llegada_estimada": llegada?.toIso8601String(),
 
-      "observaciones": _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
       "premium_trip": _premium,
     };
 
@@ -171,7 +188,16 @@ class _NewTripPageState extends State<NewTripPage> {
           .timeout(const Duration(seconds: 12));
 
       if (res.statusCode != 201) {
-        String msg = 'No se pudo registrar el viaje (${res.statusCode}).';
+        // Manejo especial del 409 (duplicado)
+        if (res.statusCode == 409) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tu viaje ya se encuentra creado.')),
+          );
+          return; // no navegar
+        }
+
+        String msg =
+            'No se pudo registrar el viaje (${res.statusCode}).';
         try {
           final m = jsonDecode(res.body);
           if (m is Map && m['detail'] != null) msg = m['detail'].toString();
@@ -180,13 +206,17 @@ class _NewTripPageState extends State<NewTripPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Viaje registrado para ${me?.firstName ?? 'ti'}.')),
+        SnackBar(
+            content: Text(
+                'Viaje registrado para ${me?.firstName ?? 'ti'}.')),
       );
       if (mounted) Navigator.of(context).pop(true); // vuelve a la lista
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(
+            content:
+                Text(e.toString().replaceFirst('Exception: ', ''))),
       );
     }
   }
@@ -239,7 +269,8 @@ class _NewTripPageState extends State<NewTripPage> {
                   label: 'Peso (T)',
                   hint: 'Ej: 32.0',
                   controller: _pesoCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true),
                   icon: Icons.scale_outlined,
                 ),
               ),
@@ -319,7 +350,8 @@ class _NewTripPageState extends State<NewTripPage> {
 
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text('Tipo de viaje', style: Theme.of(context).textTheme.titleSmall),
+                child: Text('Tipo de viaje',
+                    style: Theme.of(context).textTheme.titleSmall),
               ),
               const SizedBox(height: 6),
               Container(
@@ -329,7 +361,8 @@ class _NewTripPageState extends State<NewTripPage> {
                       : cs.surfaceVariant.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
                 child: Row(
                   children: [
                     Row(
@@ -337,7 +370,7 @@ class _NewTripPageState extends State<NewTripPage> {
                         Radio<bool>(
                           value: false,
                           groupValue: _premium,
-                          onChanged: (_) {}, // bloqueado: siempre estándar (por ahora)
+                          onChanged: (_) {}, // bloqueado por ahora
                         ),
                         const Text('Viaje estándar'),
                       ],
@@ -347,7 +380,10 @@ class _NewTripPageState extends State<NewTripPage> {
                       opacity: 0.45,
                       child: Row(
                         children: [
-                          Radio<bool>(value: true, groupValue: _premium, onChanged: null),
+                          Radio<bool>(
+                              value: true,
+                              groupValue: _premium,
+                              onChanged: null),
                           const Text('Viaje premium'),
                         ],
                       ),
@@ -362,11 +398,16 @@ class _NewTripPageState extends State<NewTripPage> {
               Row(
                 children: [
                   Expanded(
-                    child: OutlinedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+                    child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancelar')),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: FilledButton.icon(onPressed: _guardar, icon: const Icon(Icons.check_circle_outline), label: const Text('¡ Publicar !')),
+                    child: FilledButton.icon(
+                        onPressed: _guardar,
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('¡ Publicar !')),
                   ),
                 ],
               ),
@@ -378,7 +419,7 @@ class _NewTripPageState extends State<NewTripPage> {
   }
 }
 
-/// Campo de texto con Autocomplete (catálogo + texto libre) — FIX con controller + focusNode
+/// Campo de texto con Autocomplete (catálogo + texto libre)
 class _AutoCompleteField extends StatefulWidget {
   const _AutoCompleteField({
     required this.label,
@@ -411,7 +452,7 @@ class _AutoCompleteFieldState extends State<_AutoCompleteField> {
     final s = q.trim().toLowerCase();
     if (s.isEmpty) return widget.options;
     return widget.options.where((o) => o.toLowerCase().contains(s));
-  }
+    }
 
   @override
   Widget build(BuildContext context) {
@@ -428,9 +469,11 @@ class _AutoCompleteFieldState extends State<_AutoCompleteField> {
           focusNode: _focus,
           onTap: () {
             if (widget.controller.text.isEmpty) {
-              widget.controller.value = widget.controller.value.copyWith(
+              widget.controller.value =
+                  widget.controller.value.copyWith(
                 text: widget.controller.text,
-                selection: TextSelection.collapsed(offset: widget.controller.text.length),
+                selection: TextSelection.collapsed(
+                    offset: widget.controller.text.length),
               );
             }
           },
@@ -438,9 +481,11 @@ class _AutoCompleteFieldState extends State<_AutoCompleteField> {
             labelText: widget.label,
             hintText: widget.hint,
             prefixIcon: Icon(widget.icon, color: cs.onSurfaceVariant),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12)),
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 14),
           ),
         );
       },
@@ -453,11 +498,13 @@ class _AutoCompleteFieldState extends State<_AutoCompleteField> {
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 240, minWidth: 280),
+              constraints: const BoxConstraints(
+                  maxHeight: 240, minWidth: 280),
               child: ListView.separated(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 itemCount: opts.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, __) =>
+                    const Divider(height: 1),
                 itemBuilder: (context, i) {
                   final opt = opts.elementAt(i);
                   return ListTile(
@@ -465,7 +512,8 @@ class _AutoCompleteFieldState extends State<_AutoCompleteField> {
                     title: Text(opt),
                     onTap: () {
                       widget.controller.text = opt;
-                      widget.controller.selection = TextSelection.collapsed(offset: opt.length);
+                      widget.controller.selection =
+                          TextSelection.collapsed(offset: opt.length);
                       onSelected(opt);
                       _focus.requestFocus();
                     },

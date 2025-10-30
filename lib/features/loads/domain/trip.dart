@@ -1,28 +1,112 @@
+// lib/features/loads/domain/trip.dart
+import 'dart:convert';
+
 class Trip {
-  final String origin;
-  final String destination;
-  final double tons;
-  final String cargoType;
-  final String vehicle;
-  final int price;
-  final String notes;
+  final String id;
+
+  // Campos de la carga
+  final String origin;                 // origen
+  final String destination;            // destino
+  final double tons;                   // peso
+  final String cargoType;              // tipo_carga
+  final String vehicle;                // tipo_vehiculo (o vehiculo_id como fallback)
+  final int price;                     // valor
+
+  final String? notes;                 // observaciones
+  final String? contacto;              // contacto
+  final String? comercialName;         // comercial (texto libre)
+  final String comercialId;            // comercial_id
+
+  final DateTime fechaSalida;          // fecha_salida
+  final DateTime? fechaLlegadaEstimada;// fecha_llegada_estimada
+  final DateTime createdAt;            // created_at
+
+  final String estado;                 // 'publicado' | 'caducado' | 'eliminado'...
+  final bool activo;                   // true/false
+  final bool premium;                  // premium_trip
 
   const Trip({
+    required this.id,
     required this.origin,
     required this.destination,
     required this.tons,
     required this.cargoType,
     required this.vehicle,
     required this.price,
-    this.notes = '',
+    required this.comercialId,
+    required this.fechaSalida,
+    required this.createdAt,
+    required this.estado,
+    required this.activo,
+    required this.premium,
+    this.fechaLlegadaEstimada,
+    this.notes,
+    this.contacto,
+    this.comercialName,
   });
-}
 
-const mockTrips = <Trip>[
-  Trip(origin: 'Medellín', destination: 'Bogotá',  tons: 40, cargoType: 'Granel sólido', vehicle: 'Tractocamión sencillo', price: 8500000, notes: 'Cargue mañana 7am'),
-  Trip(origin: 'Cartagena', destination: 'Bogotá', tons: 56, cargoType: 'Contenedor',    vehicle: 'Doble troque',        price: 12000000, notes: 'Entrega en Zona Franca'),
-  Trip(origin: 'Cali', destination: 'Barranquilla', tons: 32, cargoType: 'Paletizado', vehicle: 'Tracto 3 ejes', price: 9200000),
-  Trip(origin: 'Bucaramanga', destination: 'Medellín', tons: 28, cargoType: 'Cemento', vehicle: 'Sencillo', price: 6800000),
-  Trip(origin: 'Santa Marta', destination: 'Cúcuta', tons: 34, cargoType: 'Carbón', vehicle: 'Patineta', price: 10400000),
-  Trip(origin: 'Barrancabermeja', destination: 'Yopal', tons: 25, cargoType: 'Granel líquido', vehicle: 'Cisterna', price: 7600000),
-];
+  factory Trip.fromJson(Map<String, dynamic> j) {
+    double _asDouble(dynamic v) {
+      if (v is num) return v.toDouble();
+      return double.tryParse(v?.toString() ?? '0') ?? 0.0;
+    }
+
+    int _asInt(dynamic v) {
+      if (v is num) return v.toInt();
+      return int.tryParse(v?.toString() ?? '0') ?? 0;
+    }
+
+    DateTime? _asDT(dynamic v) {
+      if (v == null) return null;
+      return DateTime.tryParse(v.toString());
+    }
+
+    final peso = _asDouble(j['peso']);
+    final veh = (j['tipo_vehiculo'] ?? j['vehiculo_id'] ?? '').toString();
+
+    return Trip(
+      id: j['id'].toString(),
+      origin: (j['origen'] ?? '').toString(),
+      destination: (j['destino'] ?? '').toString(),
+      tons: peso,
+      cargoType: (j['tipo_carga'] ?? '').toString(),
+      vehicle: veh,
+      price: _asInt(j['valor']),
+      notes: (j['observaciones'] ?? '').toString().trim().isEmpty
+          ? null
+          : j['observaciones'].toString(),
+      contacto: j['contacto']?.toString(),
+      comercialName: j['comercial']?.toString(),
+      comercialId: (j['comercial_id'] ?? '').toString(),
+      fechaSalida: _asDT(j['fecha_salida']) ?? DateTime.fromMillisecondsSinceEpoch(0),
+      fechaLlegadaEstimada: _asDT(j['fecha_llegada_estimada']),
+      createdAt: _asDT(j['created_at']) ?? DateTime.now(),
+      estado: (j['estado'] ?? (j['activo'] == true ? 'publicado' : 'caducado')).toString(),
+      activo: j['activo'] == true,
+      premium: j['premium_trip'] == true,
+    );
+  }
+
+  static List<Trip> listFromResponse(String body) {
+    final data = jsonDecode(body);
+    if (data is List) {
+      return data.map((e) => Trip.fromJson(e as Map<String, dynamic>)).toList();
+    }
+    if (data is Map && data['items'] is List) {
+      return (data['items'] as List)
+          .map((e) => Trip.fromJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    return const <Trip>[];
+  }
+
+  // Helpers para UI
+  bool get isMine => comercialId.isNotEmpty; // el check real lo haces con tu user.id
+  bool get isExpired => estado.toLowerCase() != 'publicado' || !activo;
+
+  /// Tiempo restante de “publicado” (24h desde createdAt).
+  Duration get timeLeft {
+    final deadline = createdAt.add(const Duration(hours: 24));
+    return deadline.difference(DateTime.now());
+  }
+}

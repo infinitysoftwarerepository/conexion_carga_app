@@ -1,39 +1,29 @@
 // lib/features/loads/presentation/pages/start_page.dart
-//
-// StartPage
-// - Invitado: primera fila con 2 botones (Iniciar sesión / Registrarse)
-// - Con sesión: SOLO la primera fila con 3 botones
-//      [+ Registrar viaje]  [Mis viajes]  [Mis puntos]
-//   * "+ Registrar viaje"  -> NewTripPage
-//   * "Mis viajes"         -> LoadsPage   (el widget que tienes en my_loads_page.dart)
-//   * "Mis puntos"         -> PointsPage
-// - El resto de contenido (LoadCards) lo dejamos para 2 columnas más adelante.
-//
-
 import 'package:flutter/material.dart';
 
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 import 'package:conexion_carga_app/app/widgets/molecules/start_headline.dart';
 import 'package:conexion_carga_app/app/widgets/molecules/bottom_banner_section.dart';
-import 'package:conexion_carga_app/app/widgets/organisms/ad_banner_full_width.dart';
 import 'package:conexion_carga_app/app/widgets/new_action_fab.dart';
 import 'package:conexion_carga_app/app/widgets/glyph_filter.dart';
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
+import 'package:conexion_carga_app/app/widgets/load_card.dart';
 
 import 'package:conexion_carga_app/features/loads/presentation/pages/login_page.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/registration_form_page.dart';
-// En tu proyecto este archivo define el widget LoadsPage:
 import 'package:conexion_carga_app/features/loads/presentation/pages/my_loads_page.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/points_page.dart';
-// Nuevo: registrar viaje directo
 import 'package:conexion_carga_app/features/loads/presentation/pages/new_trip_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/trip_detail_page.dart';
 
+import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
+import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
 
 class StartPage extends StatefulWidget {
   const StartPage({
     super.key,
-  this.userName = '◄ Inicie sesión o registrese',
+    this.userName = '◄ Inicie sesión o registrese',
   });
 
   final String userName;
@@ -45,124 +35,153 @@ class StartPage extends StatefulWidget {
 class _StartPageState extends State<StartPage> {
   final GlobalKey _profileKey = GlobalKey();
 
+  List<Trip> _publicTrips = const <Trip>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  Future<void> _reload() async {
+    final data = await LoadsApi.fetchPublic(limit: 100);
+    if (!mounted) return;
+    setState(() => _publicTrips = data);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final myId = AuthSession.instance.user.value?.id ?? '';
+
     return Scaffold(
       appBar: _buildAppBar(),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: ListView(
+      body: Stack(
+        children: [
+          // Header fijo + grid scrolleable comentario
+          Column(
+            children: [
+              // ───────────────── Header fijo con botones (compactos) ─────────────────
+              Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                children: [
-                  // ------------------------------------------------------------------
-                  // Fila #1 (solamente esta fila cambia a 3 columnas si hay sesión)
-                  // ------------------------------------------------------------------
-                  ValueListenableBuilder<AuthUser?>(
-                    valueListenable: AuthSession.instance.user,
-                    builder: (_, user, __) {
-                      final isLight =
-                          Theme.of(context).brightness == Brightness.light;
-                      final bg = isLight ? kGreenStrong : kDeepDarkGreen;
-                      final fg = isLight ? Colors.white : kGreyText;
+                child: ValueListenableBuilder<AuthUser?>(
+                  valueListenable: AuthSession.instance.user,
+                  builder: (_, user, __) {
+                    final isLight =
+                        Theme.of(context).brightness == Brightness.light;
+                    final bg = isLight ? kGreenStrong : kDeepDarkGreen;
+                    final fg = isLight ? Colors.white : kGreyText;
 
-                      if (user == null) {
-                        // Invitado: 2 columnas
-                        return _TwoButtonGrid(
-                          left: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: NewActionFab(
-                              label: 'Iniciar sesión',
-                              icon: Icons.login,
-                              backgroundColor: bg,
-                              foregroundColor: fg,
-                              onTap: () async {
-                                final ok =
-                                    await Navigator.of(context).push<bool>(
-                                  MaterialPageRoute(
-                                      builder: (_) => const LoginPage()),
-                                );
-                                if (ok == true && mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text('¡Bienvenido!')),
+                    Widget compact(NewActionFab btn) {
+                      // Altura bajita + escala automática para evitar overflows
+                      return SizedBox(
+                        height: 40, // <- compacta (si ves muy apretado, sube a 42)
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: IconTheme(
+                            data: const IconThemeData(size: 16), // icono más pequeño
+                            child: MediaQuery(
+                              data: MediaQuery.of(context)
+                                  .copyWith(textScaler: const TextScaler.linear(0.90)),
+                              child: btn,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (user == null) {
+                      // Invitado: 2 botones
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: compact(
+                              NewActionFab(
+                                label: 'Iniciar sesión',
+                                icon: Icons.login,
+                                backgroundColor: bg,
+                                foregroundColor: fg,
+                                onTap: () async {
+                                  final ok = await Navigator.of(context).push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => const LoginPage(),
+                                    ),
                                   );
-                                }
-                              },
+                                  if (ok == true && mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('¡Bienvenido!')),
+                                    );
+                                    await _reload();
+                                  }
+                                },
+                              ),
                             ),
                           ),
-                          right: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: NewActionFab(
-                              label: 'Registrarse',
-                              icon: Icons.person_add,
-                              backgroundColor: bg,
-                              foregroundColor: fg,
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const RegistrationFormPage()),
-                                );
-                              },
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: compact(
+                              NewActionFab(
+                                label: 'Registrarse',
+                                icon: Icons.person_add,
+                                backgroundColor: bg,
+                                foregroundColor: fg,
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const RegistrationFormPage(),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
-                        );
-                      } else {
-                        // Con sesión: 3 columnas (SOLO esta primera fila)
-                        return _ThreeButtonGrid(
-                          // 1) + Registrar viaje -> NewTripPage
-                          left: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: NewActionFab(
+                        ],
+                      );
+                    }
+
+                    // Con sesión: 3 botones
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: compact(
+                            NewActionFab(
                               label: '+ Registrar viaje',
                               icon: Icons.add_road,
                               backgroundColor: bg,
                               foregroundColor: fg,
-                              onTap: () {
-                                Navigator.of(context).push(
+                              onTap: () async {
+                                await Navigator.of(context).push(
                                   MaterialPageRoute(
-                                      builder: (_) => const NewTripPage()),
+                                    builder: (_) => const NewTripPage(),
+                                  ),
                                 );
+                                await _reload();
                               },
                             ),
                           ),
-                          // 2) Mis viajes -> LoadsPage (tu pantalla de mis cargas)
-                          middle: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: NewActionFab(
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: compact(
+                            NewActionFab(
                               label: 'Mis viajes',
                               icon: Icons.local_shipping_outlined,
                               backgroundColor: bg,
                               foregroundColor: fg,
                               onTap: () {
-                                final u = AuthSession.instance.user.value;
-                                final userName = [
-                                  (u?.firstName ?? '').trim(),
-                                  (u?.lastName ?? '').trim(),
-                                ].where((s) => s.isNotEmpty).join(' ');
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (_) => LoadsPage(
-                                      userName: userName.isEmpty
-                                          ? 'Usuario'
-                                          : userName,
-                                    ),
+                                    builder: (_) => const LoadsPage(userName: ''),
                                   ),
                                 );
                               },
                             ),
                           ),
-                          // 3) Mis puntos -> PointsPage
-                          right: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: NewActionFab(
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: compact(
+                            NewActionFab(
                               label: 'Mis puntos',
                               icon: Icons.stars_outlined,
                               backgroundColor: bg,
@@ -170,36 +189,71 @@ class _StartPageState extends State<StartPage> {
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                      builder: (_) => const PointsPage()),
+                                    builder: (_) => const PointsPage(),
+                                  ),
                                 );
                               },
                             ),
                           ),
-                        );
-                      }
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+
+              // ───────────────── Grid scrolleable ─────────────────
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: _reload,
+                  child: GridView.builder(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 0.86,
+                    ),
+                    itemCount: _publicTrips.length,
+                    itemBuilder: (ctx, i) {
+                      final t = _publicTrips[i];
+                      final isMine = t.comercialId == myId;
+
+                      // Tap → detalle del viaje
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => TripDetailPage(trip: t),
+                            ),
+                          );
+                        },
+                        child: LoadCard(trip: t, isMine: isMine),
+                      );
                     },
                   ),
-
-                  const SizedBox(height: 8),
-
-                  // 🔜 Aquí luego montamos las LoadCards en 2 columnas.
-                ],
+                ),
               ),
+            ],
+          ),
+
+          // ───────────────── Footer fijo con TU BottomBannerSection ─────────────────
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Material(
+              elevation: 12,
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: const BottomBannerSection(donationNumber: '008-168-23331'),
             ),
-
-            // Promo pegada al carrusel
-            const _TopAd(),
-
-            // Carrusel / banner inferior
-            const BottomBannerSection(donationNumber: '008-168-23331'),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   // ===================== AppBar =====================
-
   PreferredSizeWidget _buildAppBar() {
     final isLight = Theme.of(context).brightness == Brightness.light;
 
@@ -207,17 +261,11 @@ class _StartPageState extends State<StartPage> {
       foregroundColor: isLight ? Colors.black : Colors.white,
       toolbarHeight: 72,
       centerTitle: false,
-
-      // Lupita SIEMPRE a la izquierda
       leading: IconButton(
         tooltip: 'Buscar',
         icon: const Icon(Icons.search),
-        onPressed: () {
-          // TODO: abrir buscador global
-        },
+        onPressed: () {},
       ),
-
-      // Título con subtítulo dinámico
       title: ValueListenableBuilder<AuthUser?>(
         valueListenable: AuthSession.instance.user,
         builder: (_, user, __) {
@@ -232,14 +280,11 @@ class _StartPageState extends State<StartPage> {
           );
         },
       ),
-
-      // Acciones: muñequito (solo si hay sesión), filtro y toggle
       actions: [
         ValueListenableBuilder<AuthUser?>(
           valueListenable: AuthSession.instance.user,
           builder: (_, user, __) {
             return Row(
-              // ✅ aquí estaba el typo: es MainAxisSize, no "MainSize"
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (user != null) ...[
@@ -259,36 +304,6 @@ class _StartPageState extends State<StartPage> {
           },
         ),
       ],
-    );
-  }
-
-  PopupMenuEntry<void> _menuItem({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-    required Color bg,
-    required Color fg,
-    EdgeInsets padding = const EdgeInsets.fromLTRB(12, 12, 12, 12),
-    bool enabled = true,
-  }) {
-    return PopupMenuItem<void>(
-      enabled: enabled,
-      padding: EdgeInsets.zero,
-      child: Padding(
-        padding: padding,
-        child: Opacity(
-          opacity: enabled ? 1.0 : 0.45,
-          child: NewActionFab(
-            label: label,
-            icon: icon,
-            backgroundColor: bg,
-            foregroundColor: fg,
-            onTap: () {
-              if (enabled) onTap();
-            },
-          ),
-        ),
-      ),
     );
   }
 
@@ -317,97 +332,47 @@ class _StartPageState extends State<StartPage> {
       color: Theme.of(context).colorScheme.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       items: <PopupMenuEntry<void>>[
-        // Editar perfil (por ahora deshabilitado)
-        _menuItem(
-          label: 'Editar perfil',
-          icon: Icons.edit_outlined,
-          bg: bg,
-          fg: fg,
-          onTap: () {},
+        PopupMenuItem<void>(
           enabled: false,
+          padding: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            child: Opacity(
+              opacity: 0.45,
+              child: NewActionFab(
+                label: 'Editar perfil',
+                icon: Icons.edit_outlined,
+                backgroundColor: bg,
+                foregroundColor: fg,
+                onTap: () {},
+              ),
+            ),
+          ),
         ),
         const PopupMenuDivider(height: 8),
-        _menuItem(
-          label: 'Cerrar sesión',
-          icon: Icons.logout,
-          bg: bg,
-          fg: fg,
+        PopupMenuItem<void>(
           enabled: user != null,
-          onTap: () {
-            Navigator.pop(context);
-            AuthSession.instance.signOut();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Sesión cerrada.')),
-            );
-          },
+          padding: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+            child: NewActionFab(
+              label: 'Cerrar sesión',
+              icon: Icons.logout,
+              backgroundColor: bg,
+              foregroundColor: fg,
+              onTap: () {
+                Navigator.pop(context);
+                AuthSession.instance.signOut();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Sesión cerrada.')),
+                );
+                _reload();
+              },
+            ),
+          ),
         ),
       ],
     );
   }
 }
 
-// ===================== Widgets auxiliares =====================
-
-class _TopAd extends StatelessWidget {
-  const _TopAd();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.only(top: 4, bottom: 8),
-      child: AdBannerFullWidth(
-        imageAsset: 'assets/images/ad_start_full.png',
-      ),
-    );
-  }
-}
-
-/// Rejilla de 2 columnas (invitado y/o secciones futuras 2-col).
-class _TwoButtonGrid extends StatelessWidget {
-  const _TwoButtonGrid({
-    required this.left,
-    required this.right,
-  });
-
-  final Widget left;
-  final Widget right;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 3.8,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [left, right],
-    );
-  }
-}
-
-/// Rejilla SOLO para la primera fila cuando hay sesión (3 columnas).
-class _ThreeButtonGrid extends StatelessWidget {
-  const _ThreeButtonGrid({
-    required this.left,
-    required this.middle,
-    required this.right,
-  });
-
-  final Widget left;
-  final Widget middle;
-  final Widget right;
-
-  @override
-  Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 3, // ← división en 3 SOLO para esta fila
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 3.8,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      children: [left, middle, right],
-    );
-  }
-}

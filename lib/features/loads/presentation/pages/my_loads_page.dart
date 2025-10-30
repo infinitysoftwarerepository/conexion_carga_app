@@ -1,6 +1,8 @@
 // lib/features/loads/presentation/pages/my_loads_page.dart
 import 'package:flutter/material.dart';
+
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
+import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
 
 // widgets
 import 'package:conexion_carga_app/app/widgets/glyph_filter.dart';
@@ -15,7 +17,7 @@ import 'package:conexion_carga_app/features/loads/presentation/pages/new_trip_pa
 // AppBar reutilizable
 import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 
-// Sesión (para leer el nombre del usuario)
+// Sesión (para saber mi id)
 import 'package:conexion_carga_app/core/auth_session.dart';
 
 class LoadsPage extends StatefulWidget {
@@ -31,14 +33,19 @@ class _LoadsPageState extends State<LoadsPage>
   late final AnimationController _anim;
   bool _searchOpen = false;
 
-  List<Trip> _displayed = List.of(mockTrips);
+  List<Trip> _all = const <Trip>[];
+  List<Trip> _displayed = const <Trip>[];
 
   @override
   void initState() {
     super.initState();
-    _anim =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 180));
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 180),
+    );
     _searchCtrl.addListener(() => _applyFilter(_searchCtrl.text));
+    // Cargar mis viajes al entrar
+    _reload();
   }
 
   @override
@@ -48,6 +55,15 @@ class _LoadsPageState extends State<LoadsPage>
     super.dispose();
   }
 
+  Future<void> _reload() async {
+    final data = await LoadsApi.fetchMine(status: 'all');
+    if (!mounted) return;
+    setState(() {
+      _all = data;
+      _displayed = data;
+    });
+  }
+
   void _toggleSearch() {
     setState(() => _searchOpen = !_searchOpen);
     if (_searchOpen) {
@@ -55,24 +71,24 @@ class _LoadsPageState extends State<LoadsPage>
     } else {
       _anim.reverse();
       _searchCtrl.clear();
-      _displayed = List.of(mockTrips);
+      setState(() => _displayed = _all);
     }
   }
 
   void _applyFilter(String q) {
     final query = q.trim().toLowerCase();
     if (query.isEmpty) {
-      setState(() => _displayed = List.of(mockTrips));
+      setState(() => _displayed = _all);
       return;
     }
     setState(() {
-      _displayed = mockTrips.where((t) {
+      _displayed = _all.where((t) {
         final campos = <String>[
           t.origin,
           t.destination,
           t.cargoType,
           t.vehicle,
-          t.notes,
+          t.notes ?? '',
           t.price.toString(),
           t.tons.toString(),
         ].map((e) => e.toLowerCase());
@@ -83,23 +99,25 @@ class _LoadsPageState extends State<LoadsPage>
 
   @override
   Widget build(BuildContext context) {
+    final myId = AuthSession.instance.user.value?.id ?? '';
+
     return Scaffold(
       appBar: CustomAppBar(
         foregroundColor: Theme.of(context).brightness == Brightness.light
             ? Colors.black
             : Colors.white,
         titleSpacing: 0,
-        height: 84, // 👈 más alto para que quepa el subtítulo en 2 líneas
+        height: 84,
         centerTitle: false,
         title: ValueListenableBuilder<AuthUser?>(
           valueListenable: AuthSession.instance.user,
           builder: (_, user, __) {
             final firstName = (user?.firstName ?? '').trim();
-            final soloPrimerNombre =
-                firstName.isEmpty ? '' : firstName.split(RegExp(r'\s+')).first;
-            final subtitle = soloPrimerNombre.isEmpty
-                ? 'Viajes personalizados'
-                : 'Viajes personalizados de $soloPrimerNombre';
+            final solo = firstName.isEmpty
+                ? ''
+                : firstName.split(RegExp(r'\s+')).first;
+            final subtitle =
+                solo.isEmpty ? 'Viajes personalizados' : 'Viajes personalizados de $solo';
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +134,7 @@ class _LoadsPageState extends State<LoadsPage>
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  maxLines: 2,          // 👈 2 líneas
+                  maxLines: 2,
                   softWrap: true,
                   overflow: TextOverflow.fade,
                   style: TextStyle(
@@ -150,20 +168,25 @@ class _LoadsPageState extends State<LoadsPage>
 
       body: Stack(
         children: [
-          // GRID DE CARDS
-          GridView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12), // 👈 un pelín más arriba
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.86,
+          RefreshIndicator(
+            onRefresh: _reload,
+            child: GridView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                childAspectRatio: 0.86,
+              ),
+              itemCount: _displayed.length,
+              itemBuilder: (ctx, i) {
+                final t = _displayed[i];
+                return LoadCard(trip: t, isMine: t.comercialId == myId);
+              },
             ),
-            itemCount: _displayed.length,
-            itemBuilder: (ctx, i) => LoadCard(trip: _displayed[i]),
           ),
 
-          // BURBUJA DE BÚSQUEDA (animada)
+          // BURBUJA DE BÚSQUEDA
           Positioned(
             left: 12,
             right: 12,
@@ -173,10 +196,8 @@ class _LoadsPageState extends State<LoadsPage>
               child: AnimatedBuilder(
                 animation: _anim,
                 builder: (context, _) {
-                  final scale =
-                      Tween<double>(begin: 0.95, end: 1.0).evaluate(_anim);
-                  final opacity =
-                      Tween<double>(begin: 0.0, end: 1.0).evaluate(_anim);
+                  final scale = Tween<double>(begin: 0.95, end: 1.0).evaluate(_anim);
+                  final opacity = Tween<double>(begin: 0.0, end: 1.0).evaluate(_anim);
                   return Opacity(
                     opacity: opacity,
                     child: Transform.scale(
@@ -188,7 +209,9 @@ class _LoadsPageState extends State<LoadsPage>
                         color: Colors.white,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           child: Row(
                             children: [
                               const Icon(Icons.search, color: Color(0xFF757575)),
@@ -211,8 +234,11 @@ class _LoadsPageState extends State<LoadsPage>
                                     _searchCtrl.clear();
                                     _applyFilter('');
                                   },
-                                  icon: const Icon(Icons.close,
-                                      size: 20, color: Color(0xFF757575)),
+                                  icon: const Icon(
+                                    Icons.close,
+                                    size: 20,
+                                    color: Color(0xFF757575),
+                                  ),
                                   splashRadius: 18,
                                 ),
                             ],
@@ -228,14 +254,14 @@ class _LoadsPageState extends State<LoadsPage>
         ],
       ),
 
-      // FAB: abre el formulario de nuevo viaje
       floatingActionButton: NewActionFab(
         label: 'Nuevo viaje',
         icon: Icons.add,
-        onTap: () {
-          Navigator.of(context).push(
+        onTap: () async {
+          await Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const NewTripPage()),
           );
+          await _reload();
         },
       ),
     );

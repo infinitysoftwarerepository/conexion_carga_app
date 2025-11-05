@@ -4,7 +4,7 @@ import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 
 class LoadCard extends StatelessWidget {
   final Trip trip;
-  final bool isMine; // si es del usuario, mostramos el muñequito
+  final bool isMine;
 
   const LoadCard({
     super.key,
@@ -12,13 +12,17 @@ class LoadCard extends StatelessWidget {
     this.isMine = false,
   });
 
-  String _formatDate(DateTime? dt) {
-    if (dt == null) return '-';
+  String _formatTons(double t) {
     try {
-      return DateFormat('dd/MM HH:mm').format(dt);
+      return '${t.toStringAsFixed(t.truncateToDouble() == t ? 0 : 1)} Ton';
     } catch (_) {
-      return '-';
+      return '- Ton';
     }
+  }
+
+  String _formatMoney(num value) {
+    final f = NumberFormat.simpleCurrency(locale: 'es_CO', name: 'COP');
+    return f.format(value).replaceAll(',00', '');
   }
 
   @override
@@ -34,15 +38,16 @@ class LoadCard extends StatelessWidget {
             color: Colors.black.withOpacity(0.05),
             blurRadius: 6,
             offset: const Offset(0, 3),
-          )
+          ),
         ],
       ),
       padding: const EdgeInsets.all(12),
       child: Stack(
         children: [
-          // Contenido
+          // CONTENIDO VERTICAL COMPACTO (sin riesgo de overflow)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Origen → Destino
               Text(
@@ -50,41 +55,114 @@ class LoadCard extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
                   fontSize: 15,
                 ),
               ),
               const SizedBox(height: 6),
 
-              // Tipo de carga | vehículo
-              Text(
-                '${trip.cargoType} | ${trip.vehicle}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, color: Colors.black54),
+              // Tipo de carga
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.inventory_2_outlined, size: 16, color: Colors.black54),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      trip.cargoType ?? '-',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 2),
 
-              const SizedBox(height: 4),
+              // Tipo de vehículo
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.local_shipping_outlined, size: 16, color: Colors.black54),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      trip.vehicle ?? '-',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
 
-              // Tonelaje y precio
-              Text(
-                '${trip.tons.toStringAsFixed(1)} Ton  •  \$${trip.price}',
-                style: const TextStyle(fontWeight: FontWeight.w500),
+              // Tonelaje
+              Row(
+                children: [
+                  const Icon(Icons.scale_outlined, size: 16, color: Colors.black54),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatTons(trip.tons),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 2),
+
+              // Precio
+              Row(
+                children: [
+                  const Icon(Icons.attach_money, size: 16, color: Colors.black54),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _formatMoney(trip.price),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 8),
 
-              // Salida
+              // PILL “Toque aquí…” con protección contra overflow
               Row(
                 children: [
-                  const Icon(Icons.schedule, size: 16, color: Colors.black54),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Salida: ${_formatDate(trip.fechaSalida)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12),
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: cs.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.touch_app_outlined,
+                              size: 16, color: cs.primary.withOpacity(0.85)),
+                          const SizedBox(width: 6),
+                          // Elipsis para 1 línea: nunca desborda
+                          Flexible(
+                            child: Text(
+                              'Toque aquí para más info !',
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: cs.primary.withOpacity(0.90),
+                                letterSpacing: .1,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -92,7 +170,7 @@ class LoadCard extends StatelessWidget {
             ],
           ),
 
-          // Muñequito si es mío (sin canequita roja)
+          // Badge “mi viaje”
           if (isMine)
             Positioned(
               right: 0,
@@ -108,7 +186,7 @@ class LoadCard extends StatelessWidget {
                       color: Colors.black.withOpacity(0.15),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
-                    )
+                    ),
                   ],
                 ),
                 child: const Icon(Icons.person, size: 16, color: Colors.white),

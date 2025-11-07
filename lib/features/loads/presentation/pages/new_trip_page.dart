@@ -27,7 +27,7 @@ class _NewTripPageState extends State<NewTripPage> {
   final _comercialCtrl = TextEditingController();
   final _contactoCtrl = TextEditingController();
   final _conductorCtrl = TextEditingController();
-  final _vehiculoCtrl = TextEditingController();
+  // final _vehiculoCtrl = TextEditingController(); // eliminado
   final _tipoVehiculoCtrl = TextEditingController();
   final _obsCtrl = TextEditingController();
 
@@ -58,7 +58,7 @@ class _NewTripPageState extends State<NewTripPage> {
     _comercialCtrl.dispose();
     _contactoCtrl.dispose();
     _conductorCtrl.dispose();
-    _vehiculoCtrl.dispose();
+    // _vehiculoCtrl.dispose(); // eliminado
     _tipoVehiculoCtrl.dispose();
     _obsCtrl.dispose();
     super.dispose();
@@ -83,7 +83,7 @@ class _NewTripPageState extends State<NewTripPage> {
     if (endpoint.contains('tipos-carga')) return _fallbackTiposCarga;
     if (endpoint.contains('tipos-vehiculo')) return _fallbackTiposVehiculo;
     return const <String>[];
-    }
+  }
 
   // -------------------- FETCH CATÁLOGOS --------------------
   Future<List<String>> _fetchCatalog(String endpoint) async {
@@ -92,7 +92,6 @@ class _NewTripPageState extends State<NewTripPage> {
     final tok = AuthSession.instance.token ?? '';
     final uri = Uri.parse('${Env.baseUrl}$endpoint?limit=10000');
 
-    // Debug corto
     // ignore: avoid_print
     print('[CAT] GET $uri');
 
@@ -110,22 +109,17 @@ class _NewTripPageState extends State<NewTripPage> {
       try {
         json = convert.jsonDecode(res.body);
       } catch (_) {
-        json = res.body; // por si algún día viene texto plano
+        json = res.body;
       }
 
       List<dynamic> list = const [];
       if (json is List) {
         list = json;
       } else if (json is Map) {
-        // claves comunes
-        final keys = [
-          'data','items','rows','result','results',
-          'municipios','tipos','catalogo','catalogos'
-        ];
+        final keys = ['data','items','rows','result','results','municipios','tipos','catalogo','catalogos'];
         for (final k in keys) {
           if (json[k] is List) { list = json[k] as List; break; }
         }
-        // heurística: lista más grande en el Map
         if (list.isEmpty) {
           List<dynamic> biggest = const [];
           json.forEach((k, v) {
@@ -139,13 +133,7 @@ class _NewTripPageState extends State<NewTripPage> {
           .map((e) {
             if (e is String) return e;
             if (e is Map) {
-              return (e['nombre'] ??
-                      e['name'] ??
-                      e['label'] ??
-                      e['title'] ??
-                      e['descripcion'] ??
-                      '')
-                  .toString();
+              return (e['nombre'] ?? e['name'] ?? e['label'] ?? e['title'] ?? e['descripcion'] ?? '').toString();
             }
             return '';
           })
@@ -153,16 +141,13 @@ class _NewTripPageState extends State<NewTripPage> {
           .cast<String>()
           .toList();
 
-      // Si el back responde vacío, usa fallback para no dejar el control en blanco
       final result = names.isEmpty ? _fallbackFor(endpoint) : names;
-
       _cache[endpoint] = result;
 
       // ignore: avoid_print
       print('[CAT] 200 $endpoint → ${result.length} items');
       return result;
     } catch (e) {
-      // Error duro → usa fallback
       final fb = _fallbackFor(endpoint);
       _cache[endpoint] = fb;
       // ignore: avoid_print
@@ -196,9 +181,8 @@ class _NewTripPageState extends State<NewTripPage> {
       "peso": double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
       "valor": int.tryParse(_valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ?? 0,
       "conductor": _conductorCtrl.text.trim().isEmpty ? null : _conductorCtrl.text.trim(),
-      "vehiculo_id": _vehiculoCtrl.text.trim().isEmpty ? null : _vehiculoCtrl.text.trim(),
-      "tipo_vehiculo":
-          _tipoVehiculoCtrl.text.trim().isEmpty ? null : _tipoVehiculoCtrl.text.trim(),
+      // "vehiculo_id": _vehiculoCtrl.text.trim().isEmpty ? null : _vehiculoCtrl.text.trim(), // eliminado
+      "tipo_vehiculo": _tipoVehiculoCtrl.text.trim().isEmpty ? null : _tipoVehiculoCtrl.text.trim(),
       "observaciones": _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
       "duration_hours": _durationHours,
       "premium_trip": _premium,
@@ -207,10 +191,7 @@ class _NewTripPageState extends State<NewTripPage> {
     try {
       final res = await http.post(
         uri,
-        headers: {
-          'Content-Type': 'application/json',
-          if (tok.isNotEmpty) 'Authorization': 'Bearer $tok',
-        },
+        headers: {'Content-Type': 'application/json', if (tok.isNotEmpty) 'Authorization': 'Bearer $tok'},
         body: convert.jsonEncode(body),
       );
 
@@ -316,13 +297,8 @@ class _NewTripPageState extends State<NewTripPage> {
           ),
           const SizedBox(height: 6),
           _Row2(
-            left: AppTextField(
-              label: 'Vehículo',
-              hint: 'Placa o identificación',
-              controller: _vehiculoCtrl,
-              icon: Icons.local_shipping_outlined,
-            ),
-            right: DropdownCatalogField(
+            // Aquí antes estaba “Vehículo (placa)”; se quita.
+            left: DropdownCatalogField(
               label: 'Tipo de vehículo',
               hint: 'Tracto, Sencillo, …',
               controller: _tipoVehiculoCtrl,
@@ -330,6 +306,7 @@ class _NewTripPageState extends State<NewTripPage> {
               endpoint: '/api/catalogos/tipos-vehiculo',
               loader: _fetchCatalog,
             ),
+            right: const SizedBox.shrink(), // mantiene la grilla estable
           ),
           const SizedBox(height: 6),
           AppMultilineField(
@@ -341,7 +318,7 @@ class _NewTripPageState extends State<NewTripPage> {
           ),
           const SizedBox(height: 6),
 
-          // Bloque tipo de viaje + duración (igual al tuyo)
+          // Bloque tipo de viaje + duración
           Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -457,7 +434,7 @@ class _Row2 extends StatelessWidget {
   }
 }
 
-/* -------------------- chips duración (igual) -------------------- */
+/* -------------------- chips duración -------------------- */
 class _DurationChips extends StatelessWidget {
   const _DurationChips({required this.value, required this.onChanged});
   final int value;
@@ -545,8 +522,7 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
     if (_items == null) return;
     final q = _textCtrl.text.trim().toLowerCase();
     setState(() {
-      _filtered =
-          q.isEmpty ? List<String>.from(_items!) : _items!.where((e) => e.toLowerCase().contains(q)).toList();
+      _filtered = q.isEmpty ? List<String>.from(_items!) : _items!.where((e) => e.toLowerCase().contains(q)).toList();
     });
     _entry?.markNeedsBuild();
   }
@@ -576,8 +552,7 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
     _removeEntry();
 
     _entry = OverlayEntry(builder: (context) {
-      final maxWidth =
-          (context.findAncestorRenderObjectOfType<RenderBox>())?.size.width ?? 320;
+      final maxWidth = (context.findAncestorRenderObjectOfType<RenderBox>())?.size.width ?? 320;
 
       return Positioned.fill(
         child: GestureDetector(
@@ -586,7 +561,7 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
           child: CompositedTransformFollower(
             link: _link,
             showWhenUnlinked: false,
-            offset: const Offset(0, 44), // bajo el cajón
+            offset: const Offset(0, 44),
             child: Material(
               elevation: 6,
               borderRadius: BorderRadius.circular(10),
@@ -656,7 +631,6 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
 
   @override
   Widget build(BuildContext context) {
-    // Como tu AppTextField no tiene suffix, creo la flecha con un Stack
     return CompositedTransformTarget(
       link: _link,
       child: Stack(
@@ -667,15 +641,14 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
             hint: widget.hint,
             controller: _textCtrl,
             icon: widget.icon,
-            readOnly: false,          // permite escribir para filtrar
-            onTap: _open,             // abre cascada al tocar
+            readOnly: false,
+            onTap: _open,
             onChanged: (_) => _entry?.markNeedsBuild(),
           ),
           const Padding(
             padding: EdgeInsets.only(right: 10),
             child: Icon(Icons.arrow_drop_down_rounded, size: 22),
           ),
-          // Permite que el tap sobre la flecha también abra
           Positioned.fill(
             child: Align(
               alignment: Alignment.centerRight,

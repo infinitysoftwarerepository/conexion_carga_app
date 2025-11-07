@@ -9,6 +9,7 @@ class LoadsApi {
   static Map<String, String> _headers() {
     final tok = AuthSession.instance.token ?? '';
     return {
+      'Accept': 'application/json',
       'Content-Type': 'application/json',
       if (tok.isNotEmpty) 'Authorization': 'Bearer $tok',
     };
@@ -41,10 +42,22 @@ class LoadsApi {
     return Trip.fromJson(jsonDecode(res.body));
   }
 
+  /// Trae el JSON completo del viaje (tal cual backend)
+  static Future<Map<String, dynamic>> fetchTripDetailRaw(String id) async {
+    final uri = Uri.parse('${Env.baseUrl}/api/loads/$id');
+    final res = await http.get(uri, headers: _headers());
+    if (res.statusCode != 200) {
+      throw Exception('Error ${res.statusCode} cargando detalle: ${res.body}');
+    }
+    final data = jsonDecode(res.body);
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('Respuesta inesperada en detalle: ${res.body}');
+  }
+
   static Future<void> expire(String id) async {
     final uri = Uri.parse('${Env.baseUrl}/api/loads/$id/expire');
     final res = await http.post(uri, headers: _headers());
-    if (res.statusCode != 200) {
+    if (res.statusCode != 200 && res.statusCode != 204) {
       throw Exception('No se pudo eliminar (caducar) el viaje.');
     }
   }

@@ -1,6 +1,7 @@
-// lib/features/loads/presentation/pages/trip_detail_page.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
@@ -8,7 +9,7 @@ import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
 import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
 
-final _money = NumberFormat.currency(locale: 'es_CO', symbol: r'$');
+final _money = NumberFormat.simpleCurrency(locale: 'es_CO', name: 'COP');
 
 class TripDetailPage extends StatefulWidget {
   final Trip trip;
@@ -24,7 +25,6 @@ class _TripDetailPageState extends State<TripDetailPage> {
   @override
   void initState() {
     super.initState();
-    // 👇 Traemos SIEMPRE el detalle crudo desde el backend
     _future = LoadsApi.fetchTripDetailRaw(widget.trip.id);
   }
 
@@ -36,13 +36,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
         height: 56,
         centerTitle: true,
         title: const Text('Detalle del viaje'),
-        actions: [
-          ThemeToggle(
-            color: Theme.of(context).colorScheme.onSurface,
-            size: 22,
-          ),
-          const SizedBox(width: 8),
-        ],
+        actions: const [ThemeToggle(size: 22), SizedBox(width: 8)],
       ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: _future,
@@ -51,144 +45,186 @@ class _TripDetailPageState extends State<TripDetailPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snap.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('Error: ${snap.error}'),
-              ),
-            );
+            return Center(child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Error: ${snap.error}'),
+            ));
           }
 
-          // Mezclamos la info del Trip (por si viene algún null en el JSON)
           final raw = Map<String, dynamic>.from(snap.data ?? {});
           final trip = widget.trip;
 
-          // Helpers para obtener campos desde múltiples claves posibles
-          String _pickStr(List<String> keys, {String? fallback}) {
-            for (final k in keys) {
-              final v = raw[k];
-              if (v != null && v.toString().trim().isNotEmpty) {
-                return v.toString();
-              }
-            }
-            return fallback ?? '';
+          String s(String key, {String fallback = ''}) {
+            final v = raw[key];
+            return (v == null) ? fallback : v.toString().trim();
           }
 
-          num? _pickNum(List<String> keys, {num? fallback}) {
-            for (final k in keys) {
-              final v = raw[k];
-              if (v is num) return v;
-              if (v is String) {
-                final parsed = num.tryParse(v.replaceAll('.', '').replaceAll(',', '.'));
-                if (parsed != null) return parsed;
-              }
+          num? n(String key, {num? fallback}) {
+            final v = raw[key];
+            if (v is num) return v;
+            if (v is String) {
+              final parsed = num.tryParse(v.replaceAll('.', '').replaceAll(',', '.'));
+              if (parsed != null) return parsed;
             }
             return fallback;
           }
 
-          // Campos principales (con fallback a Trip)
-          final origen       = _pickStr(['origen','origin'],       fallback: trip.origin);
-          final destino      = _pickStr(['destino','destination'], fallback: trip.destination);
-          final tipoCarga    = _pickStr(['tipo_carga','cargoType'], fallback: trip.cargoType);
-          final tonsNum      = _pickNum(['peso','tons'],            fallback: trip.tons);
-          final precioNum    = _pickNum(['valor','price'],          fallback: trip.price);
-          final tipoVehiculo = _pickStr(['tipo_vehiculo','vehicle'], fallback: trip.vehicle);
-          final vehiculo     = _pickStr(['vehiculo','placa','vehicle_id']);
-          final comercial = _pickStr(
-            ['comercial', 'commercial', 'comercial_nombre', 'commercial_name'],
-            // No hay campo de texto en Trip; si el backend no lo manda, mostramos vacío
-            fallback: '',
-          );
-          final contacto     = _pickStr(['contacto','telefono','phone','cel'], fallback: '');
-          final conductor    = _pickStr(['conductor','driver'], fallback: '');
-          final notas        = _pickStr(['observaciones','notes','descripcion']);
+          final origen       = s('origen',       fallback: trip.origin);
+          final destino      = s('destino',      fallback: trip.destination);
+          final pesoNum      = n('peso',         fallback: trip.tons);
+          final tipoCarga    = s('tipo_carga',   fallback: trip.cargoType);
+          final tipoVehiculo = s('tipo_vehiculo',fallback: trip.vehicle);
+          final valorNum     = n('valor',        fallback: trip.price);
+          final conductor    = s('conductor',    fallback: '');
+          final observaciones= s('observaciones',fallback: '');
+          final comercial    = s('comercial',    fallback: trip.comercial ?? '');
+          final contacto     = s('contacto',     fallback: trip.contacto ?? '');
 
-          final myId    = AuthSession.instance.user.value?.id ?? '';
-          final isMine  = (trip.comercialId == myId) || _pickStr(['comercial_id','created_by'], fallback: '') == myId;
-          final estado  = _pickStr(['estado','status'], fallback: trip.estado);
-          final activo  = _pickStr(['activo'], fallback: trip.activo ? 'true' : 'false').toString().toLowerCase() == 'true';
-          final isExpired = estado.toLowerCase() != 'publicado' || !activo;
+          final myUserId  = AuthSession.instance.user.value?.id ?? '';
+          final creadorId = s('comercial_id', fallback: trip.comercialId ?? '');
+          final isMine    = creadorId == myUserId;
 
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          return SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Título origen → destino
-                Text(
-                  '$origen → $destino',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('$origen → $destino', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 12),
 
-                // 🔎 Mostramos TODOS los campos del formulario (menos premium/duración)
-                _row('Tonelaje', tonsNum != null ? '${tonsNum.toStringAsFixed(1)} T' : '-'),
-                _row('Tipo de carga', tipoCarga),
-                _row('Tipo de vehículo', tipoVehiculo),
-                if (vehiculo.isNotEmpty) _row('Vehículo', vehiculo),
-                _row('Tarifa', precioNum != null ? _money.format(precioNum) : '-'),
-                if (comercial.isNotEmpty) _row('Comercial', comercial),
-                if (contacto.isNotEmpty) _row('Contacto (tel.)', contacto),
-                if (conductor.isNotEmpty) _row('Conductor', conductor),
-                if (notas.isNotEmpty) _row('Observaciones', notas),
+                _row('Peso',            (pesoNum != null) ? _fmtTons(pesoNum) : '-'),
+                _row('Tipo de carga',    tipoCarga.isEmpty ? '-' : tipoCarga),
+                _row('Tipo de vehículo', tipoVehiculo.isEmpty ? '-' : tipoVehiculo),
+                _row('Tarifa',           (valorNum != null) ? _fmtMoney(valorNum) : '-'),
+                _row('Conductor',        conductor.isEmpty ? '-' : conductor),
+                _row('Observaciones',    observaciones.isEmpty ? '-' : observaciones),
+                _row('Comercial',        comercial.isEmpty ? '-' : comercial),
+                _row('Contacto',         contacto.isEmpty ? '-' : contacto),
 
-                const Spacer(),
+                const SizedBox(height: 20),
 
-                // Acciones según dueño/estado
-                if (!isMine && !isExpired)
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.chat_bubble_outline),
-                      label: const Text('¡Contactar!'),
-                      onPressed: () {
-                        // TODO: Usa url_launcher con "https://wa.me/<numero>"
-                        // si tienes numero en `contacto`.
-                        // Ej: launchUrl(Uri.parse('https://wa.me/$numero'));
-                      },
-                    ),
-                  )
-                else if (isMine && !isExpired) ...[
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.delete_forever_outlined),
-                          label: const Text('Eliminar'),
-                          onPressed: () async {
-                            await LoadsApi.expire(trip.id);
-                            if (!mounted) return;
-                            Navigator.pop(context, true);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Viaje eliminado.')),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.icon(
-                          icon: const Icon(Icons.edit_outlined),
-                          label: const Text('Editar'),
-                          onPressed: () {
-                            // TODO: abrir NewTripPage precargando datos si lo deseas.
-                          },
-                        ),
-                      ),
-                    ],
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade300,
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ] else if (isMine && isExpired)
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      icon: const Icon(Icons.replay_outlined),
-                      label: const Text('Reutilizar'),
-                      onPressed: () {
-                        // TODO: abrir NewTripPage con datos precargados.
-                      },
-                    ),
+                  child: const Text(
+                    'Conexión Carga únicamente facilita la comunicación entre las partes y no asume '
+                    'responsabilidad alguna por la negociación o cumplimiento de los acuerdos. '
+                    'Reportes de irregularidades al correo electrónico: conexioncarga@gmail.com',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(height: 1.25),
                   ),
+                ),
+
+                const SizedBox(height: 100),
               ],
+            ),
+          );
+        },
+      ),
+      bottomNavigationBar: FutureBuilder<Map<String, dynamic>>(
+        future: _future,
+        builder: (context, snap) {
+          if (snap.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
+
+          final raw = Map<String, dynamic>.from(snap.data ?? {});
+          final trip = widget.trip;
+
+          String s(String key, {String fallback = ''}) {
+            final v = raw[key];
+            return (v == null) ? fallback : v.toString().trim();
+          }
+
+          final myUserId  = AuthSession.instance.user.value?.id ?? '';
+          final creadorId = s('comercial_id', fallback: trip.comercialId ?? '');
+          final isMine    = creadorId == myUserId;
+
+          final contacto  = s('contacto', fallback: trip.contacto ?? '');
+
+          Widget wppIcon() => Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: Image.asset('assets/icons/whatsapp.png', height: 18, fit: BoxFit.contain),
+              );
+
+          void onContact() => _openWhatsApp(context, contacto);
+
+          final btnStyle = FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+            minimumSize: const Size(0, 44),
+          );
+
+          final labelContactar = const Text(
+            'Contactar',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 14),
+          );
+
+          return SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: isMine
+                  ? Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: wppIcon(),
+                            label: labelContactar,
+                            onPressed: onContact,
+                            style: btnStyle,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: const Icon(Icons.ios_share),
+                            label: const Text('Exportar'),
+                            onPressed: () => _exportTrip(context, raw, trip),
+                            style: btnStyle,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.delete_forever_outlined),
+                            label: const Text('Eliminar'),
+                            onPressed: () async {
+                              await LoadsApi.expire(trip.id);
+                              if (!mounted) return;
+                              Navigator.pop(context, true);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Viaje eliminado.')),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: wppIcon(),
+                            label: labelContactar,
+                            onPressed: onContact,
+                            style: btnStyle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: const Icon(Icons.ios_share),
+                            label: const Text('Exportar'),
+                            onPressed: () => _exportTrip(context, raw, trip),
+                            style: btnStyle,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           );
         },
@@ -201,20 +237,85 @@ class _TripDetailPageState extends State<TripDetailPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 140,
-              child: Text(
-                '$label:',
-                style: const TextStyle(color: Colors.black54),
-              ),
-            ),
-            Expanded(
-              child: Text(
-                value.isEmpty ? '-' : value,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
+            SizedBox(width: 160, child: Text('$label:', style: const TextStyle(color: Colors.black54))),
+            Expanded(child: Text(value.isEmpty ? '-' : value, style: const TextStyle(fontWeight: FontWeight.w600))),
           ],
         ),
       );
+
+  String _fmtTons(num v) {
+    final d = v.toDouble();
+    if (d == d.truncateToDouble()) return '${d.toStringAsFixed(0)} T';
+    return '${d.toStringAsFixed(1)} T';
+  }
+
+  String _fmtMoney(num v) => NumberFormat.simpleCurrency(locale: 'es_CO', name: 'COP')
+      .format(v)
+      .replaceAll(',00', '');
+
+  Future<void> _openWhatsApp(BuildContext context, String phoneRaw) async {
+    final digits = phoneRaw.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (digits.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Este viaje no tiene un contacto válido.')),
+      );
+      return;
+    }
+    final normalized = digits.startsWith('+') ? digits : '+57$digits';
+    final uri = Uri.parse('https://wa.me/${normalized.replaceAll('+', '')}');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No fue posible abrir WhatsApp.')),
+      );
+    }
+  }
+
+  Future<void> _exportTrip(BuildContext context, Map<String, dynamic> raw, Trip trip) async {
+    String s(String key, {String fallback = ''}) {
+      final v = raw[key];
+      return (v == null) ? fallback : v.toString().trim();
+    }
+    num? n(String key, {num? fallback}) {
+      final v = raw[key];
+      if (v is num) return v;
+      if (v is String) {
+        final parsed = num.tryParse(v.replaceAll('.', '').replaceAll(',', '.'));
+        if (parsed != null) return parsed;
+      }
+      return fallback;
+    }
+
+    final origen       = s('origen',       fallback: trip.origin);
+    final destino      = s('destino',      fallback: trip.destination);
+    final pesoNum      = n('peso',         fallback: trip.tons);
+    final tipoCarga    = s('tipo_carga',   fallback: trip.cargoType);
+    final tipoVehiculo = s('tipo_vehiculo',fallback: trip.vehicle);
+    final valorNum     = n('valor',        fallback: trip.price);
+    final conductor    = s('conductor',    fallback: '');
+    final observaciones= s('observaciones',fallback: '');
+    final comercial    = s('comercial',    fallback: trip.comercial ?? '');
+    final contacto     = s('contacto',     fallback: trip.contacto ?? '');
+
+    final buffer = StringBuffer()
+      ..writeln('📦 Detalle del viaje')
+      ..writeln('Ruta: $origen → $destino')
+      ..writeln('Peso: ${pesoNum != null ? _fmtTons(pesoNum) : '-'}')
+      ..writeln('Tipo de carga: ${tipoCarga.isEmpty ? '-' : tipoCarga}')
+      ..writeln('Tipo de vehículo: ${tipoVehiculo.isEmpty ? '-' : tipoVehiculo}')
+      ..writeln('Tarifa: ${valorNum != null ? _fmtMoney(valorNum) : '-'}')
+      ..writeln('Conductor: ${conductor.isEmpty ? '-' : conductor}')
+      ..writeln('Observaciones: ${observaciones.isEmpty ? '-' : observaciones}')
+      ..writeln('Comercial: ${comercial.isEmpty ? '-' : comercial}')
+      ..writeln('Contacto: ${contacto.isEmpty ? '-' : contacto}');
+
+    await Clipboard.setData(ClipboardData(text: buffer.toString()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Información copiada. ¡Lista para exportar!')),
+    );
+  }
 }

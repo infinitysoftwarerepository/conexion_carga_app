@@ -1,3 +1,4 @@
+// lib/app/widgets/new_action_fab.dart
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 import 'package:flutter/material.dart';
 
@@ -7,24 +8,24 @@ class NewActionFab extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.icon,
-    this.backgroundColor,   // 👈 nuevo
-    this.foregroundColor,   // 👈 opcional (color del texto/ícono)
+    this.backgroundColor,   // opcional: color de fondo del botón
+    this.foregroundColor,   // opcional: color del texto
+    this.iconColor,         // 👈 NUEVO: color SOLO del ícono
   });
 
   final String label;
   final VoidCallback onTap;
   final IconData? icon;
-  final Color? backgroundColor; // 👈 nuevo
-  final Color? foregroundColor; // 👈 nuevo
+  final Color? backgroundColor; // opcional
+  final Color? foregroundColor; // opcional
+  final Color? iconColor;       // 👈 NUEVO
 
   @override
   Widget build(BuildContext context) {
-    final Color bg = Theme.of(context).brightness == Brightness.light
-          ? kGreenStrong
-          : kDeepDarkGreen ;
-    final Color fg = Theme.of(context).brightness == Brightness.light
-          ? Colors.white
-          : kGreyText ;
+    // Colores por tema (si no pasan overrides)
+    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final Color bg = backgroundColor ?? (isLight ? kGreenStrong : kDeepDarkGreen);
+    final Color textColor = foregroundColor ?? (isLight ? Colors.white : kGreyText);
 
     return Material(
       color: bg,
@@ -38,13 +39,14 @@ class NewActionFab extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 20, color: fg),
+                // 👇 usa iconColor si viene; si no, el mismo del texto
+                Icon(icon, size: 20, color: iconColor ?? textColor),
                 const SizedBox(width: 8),
               ],
               Text(
                 label,
                 style: TextStyle(
-                  color: fg,
+                  color: textColor,
                   fontWeight: FontWeight.w600,
                 ),
               ),

@@ -1,6 +1,7 @@
 // lib/features/loads/presentation/pages/points_page.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 👈 para Clipboard
 import 'package:http/http.dart' as http;
 
 import 'package:conexion_carga_app/core/env.dart';
@@ -21,6 +22,21 @@ class _PointsPageState extends State<PointsPage> {
 
   // filas ya ordenadas por puntos (desc)
   List<_Row> _items = [];
+
+  // ────────────────────────────────────────────────────────────
+  // URLs de referencia (CAMBIA ESTOS VALORES EN PROD)
+  // ────────────────────────────────────────────────────────────
+  // 1) URL de Play Store
+  static const String ANDROID_STORE_URL =
+      'https://play.google.com/store/apps/details?id=com.tuempresa.conexioncarga';
+  // 2) URL de App Store
+  static const String IOS_STORE_URL =
+      'https://apps.apple.com/app/id0000000000';
+  // 3) Base de Deep Link / Universal Link (o tu Dynamic Link)
+  //    Debe redirigir a tu app y pasar ?ref=<email>
+  //    Ejemplo con dominio propio: https://conexioncarga.app/ref
+  //    Ejemplo con Firebase: https://cxncarga.page.link/ref
+  static const String DEEP_LINK_BASE = 'https://conexioncarga.app/ref';
 
   String get _firstName {
     final u = AuthSession.instance.user.value;
@@ -102,8 +118,46 @@ class _PointsPageState extends State<PointsPage> {
   }
 
   // ────────────────────────────────────────────────────────────
-  // UI
+  // Copiar enlace de referido al portapapeles
   // ────────────────────────────────────────────────────────────
+  Future<void> _copyReferralLink() async {
+    final user = AuthSession.instance.user.value;
+    final email = (user?.email ?? '').trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Inicia sesión para generar tu enlace de referido.'),
+        ),
+      );
+      return;
+    }
+
+    // Construimos el deep link con ?ref=<email>
+    final deepLink = Uri.parse(DEEP_LINK_BASE).replace(queryParameters: {
+      'ref': email,
+    }).toString();
+
+    // Mensaje con *negritas* (WhatsApp/Telegram soportan *texto* en negrita)
+    final msg = StringBuffer()
+      ..writeln('*Descarga la app Conexión Carga desde mi enlace de referido!* 🚚')
+      ..writeln('')
+      ..writeln('*Android:* $ANDROID_STORE_URL')
+      ..writeln('*iOS:* $IOS_STORE_URL')
+      ..writeln('')
+      ..writeln('*Registro con mi referido:* $deepLink')
+      ..writeln('')
+      ..writeln(
+          'Al abrir el enlace, en la pantalla de registro verás el campo *Referido por (opcional)* autocompletado con mi correo.');
+
+    await Clipboard.setData(ClipboardData(text: msg.toString()));
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Enlace de referido copiado al portapapeles.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -113,7 +167,6 @@ class _PointsPageState extends State<PointsPage> {
         titleSpacing: 0,
         centerTitle: true,
         title: const Text('Top Puntajes'),
-        // subtítulo compacto
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(5),
           child: Padding(
@@ -128,17 +181,46 @@ class _PointsPageState extends State<PointsPage> {
           ),
         ),
         actions: const [
-          // botón de recarga
-  
           ThemeToggle(size: 22),
           SizedBox(width: 8),
         ],
       ),
-      body: _Body(
-        loading: _loading,
-        error: _error,
-        items: _items,
-        onRefresh: _load,
+
+      // 👇 Cambio mínimo: agregamos el botón arriba y desplazamos la tabla
+      body: Column(
+        children: [
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: kBrandOrange, // Botón naranja solicitado
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: _copyReferralLink,
+                icon: const Icon(Icons.link),
+                label: const Text('¡ Genera enlace de referido !'),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // El resto queda idéntico, pero dentro de Expanded
+          Expanded(
+            child: _Body(
+              loading: _loading,
+              error: _error,
+              items: _items,
+              onRefresh: _load,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -182,7 +264,7 @@ class _Body extends StatelessWidget {
       children: [
         // ── encabezado/rotulos ───────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
           child: Container(
             decoration: BoxDecoration(
               color: (isLight ? kBrandGreen : kDeepDarkGreen)
@@ -386,7 +468,6 @@ class _RefreshButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Busca el State hacia arriba para llamar _load()
     final state =
         context.findAncestorStateOfType<_PointsPageState>(); // puede ser null
     return IconButton(
@@ -396,3 +477,36 @@ class _RefreshButton extends StatelessWidget {
     );
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   NOTA para completar el flujo de “referido”:
+
+   1) Configura Deep Links / Universal Links:
+      - Android (App Links): agrega <intent-filter> para https de tu dominio
+        o usa Firebase Dynamic Links.
+      - iOS (Universal Links): asocia el dominio y habilita “Associated Domains”.
+
+   2) Asegúrate que el enlace DEEP_LINK_BASE (arriba) reciba ?ref=<email>
+      y lo entregue a tu app.
+
+   3) En registration_form_page.dart, al iniciar la pantalla,
+      lee la query 'ref' del deep link y precarga tu TextEditingController.
+
+      Ejemplo (pseudo-minimalista):
+      ---------------------------------------
+      // En el State de RegistrationFormPage:
+      @override
+      void didChangeDependencies() {
+        super.didChangeDependencies();
+        final uri = ModalRoute.of(context)?.settings.name;
+        if (uri != null) {
+          final ref = Uri.tryParse(uri)?.queryParameters['ref'] ?? '';
+          if (ref.isNotEmpty) {
+            _referidoController.text = ref; // tu controller del campo
+          }
+        }
+      }
+      ---------------------------------------
+      Si usas paquetes como uni_links / firebase_dynamic_links,
+      obtén el Uri desde allí y aplica la misma lógica.
+   ───────────────────────────────────────────────────────────── */

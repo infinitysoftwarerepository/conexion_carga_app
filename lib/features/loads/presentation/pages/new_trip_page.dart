@@ -41,11 +41,14 @@ class _NewTripPageState extends State<NewTripPage> {
   void initState() {
     super.initState();
     final u = AuthSession.instance.user.value;
+
+    // Precarga el nombre del usuario logueado en "Comercial" (editable por el usuario).
+    // Si el backend necesita otro formato, aquí mismo puedes ajustarlo.
     final fullName = [
       (u?.firstName ?? '').trim(),
       (u?.lastName ?? '').trim(),
     ].where((s) => s.isNotEmpty).join(' ');
-    _comercialCtrl.text = fullName;
+    _comercialCtrl.text = fullName; // ← autofill de cortesía (editable)
   }
 
   @override
@@ -186,6 +189,11 @@ class _NewTripPageState extends State<NewTripPage> {
       "observaciones": _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
       "duration_hours": _durationHours,
       "premium_trip": _premium,
+
+      // 🔧 CAMBIO: enviar SIEMPRE lo que el usuario escribió en Comercial y Contacto
+      "comercial": _comercialCtrl.text.trim(),
+      "contacto": _contactoCtrl.text.trim(),
+      // (si el backend quisiera nulls en blanco, cámbialo por:  .isEmpty ? null : ...)
     };
 
     try {
@@ -339,7 +347,7 @@ class _NewTripPageState extends State<NewTripPage> {
                       Radio<bool>(
                         value: false,
                         groupValue: _premium,
-                        onChanged: (_) {},
+                        onChanged: (_) {}, // premium deshabilitado por ahora
                         visualDensity: VisualDensity.compact,
                       ),
                       const Text('Viaje estándar'),

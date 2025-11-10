@@ -1,3 +1,4 @@
+// lib/app/widgets/load_card.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
@@ -12,17 +13,19 @@ class LoadCard extends StatelessWidget {
     this.isMine = false,
   });
 
-  String _formatTons(double t) {
+  String _formatTons(num? t) {
     try {
-      return '${t.toStringAsFixed(t.truncateToDouble() == t ? 0 : 1)} Ton';
+      final d = (t ?? 0).toDouble();
+      return '${d.toStringAsFixed(d.truncateToDouble() == d ? 0 : 1)} Ton';
     } catch (_) {
       return '- Ton';
     }
   }
 
-  String _formatMoney(num value) {
+  String _formatMoney(num? value) {
+    final v = value ?? 0;
     final f = NumberFormat.simpleCurrency(locale: 'es_CO', name: 'COP');
-    return f.format(value).replaceAll(',00', '');
+    return f.format(v).replaceAll(',00', '');
   }
 
   @override
@@ -69,7 +72,7 @@ class LoadCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      trip.cargoType ?? '-',
+                      (trip.cargoType ?? '-'),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 13, color: Colors.black87),
@@ -87,7 +90,7 @@ class LoadCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      trip.vehicle ?? '-',
+                      (trip.vehicle ?? '-'),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 13, color: Colors.black87),
@@ -143,8 +146,11 @@ class LoadCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.touch_app_outlined,
-                              size: 16, color: cs.primary.withOpacity(0.85)),
+                          Icon(
+                            Icons.touch_app_outlined,
+                            size: 16,
+                            color: cs.primary.withOpacity(0.85),
+                          ),
                           const SizedBox(width: 6),
                           // Elipsis para 1 línea: nunca desborda
                           Flexible(

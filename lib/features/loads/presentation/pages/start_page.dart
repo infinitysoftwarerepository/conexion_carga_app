@@ -37,6 +37,9 @@ class _StartPageState extends State<StartPage> {
 
   List<Trip> _publicTrips = const <Trip>[];
 
+  // “Aire” para que el banner fijo no tape las últimas cards
+  static const double _footerGap = 170;
+
   @override
   void initState() {
     super.initState();
@@ -57,10 +60,9 @@ class _StartPageState extends State<StartPage> {
       appBar: _buildAppBar(),
       body: Stack(
         children: [
-          // Header fijo + grid scrolleable comentario
           Column(
             children: [
-              // ───────────────── Header fijo con botones (compactos) ─────────────────
+              // ───────────────── Header fijo con botones ─────────────────
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 child: ValueListenableBuilder<AuthUser?>(
@@ -72,14 +74,13 @@ class _StartPageState extends State<StartPage> {
                     final fg = isLight ? Colors.white : kGreyText;
 
                     Widget compact(NewActionFab btn) {
-                      // Altura bajita + escala automática para evitar overflows
                       return SizedBox(
-                        height: 40, // <- compacta (si ves muy apretado, sube a 42)
+                        height: 40,
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: IconTheme(
-                            data: const IconThemeData(size: 16), // icono más pequeño
+                            data: const IconThemeData(size: 16),
                             child: MediaQuery(
                               data: MediaQuery.of(context)
                                   .copyWith(textScaler: const TextScaler.linear(0.90)),
@@ -171,7 +172,7 @@ class _StartPageState extends State<StartPage> {
                               onTap: () {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
-                                    builder: (_) => const LoadsPage(userName: ''),
+                                    builder: (_) => const MyLoadsPage(),
                                   ),
                                 );
                               },
@@ -180,22 +181,20 @@ class _StartPageState extends State<StartPage> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: compact(
-                            NewActionFab(
-                              label: 'Mis puntos',
-                              icon: Icons.stars_outlined,
-                              backgroundColor: bg,
-                              foregroundColor: fg,
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => const PointsPage(),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
+  child: compact(
+    NewActionFab(
+      label: 'Mis puntos',
+      icon: Icons.card_giftcard_outlined,
+      backgroundColor: kBrandOrange, // ← botón naranja completo
+      foregroundColor: Colors.white,  // ← ícono y texto en blanco
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const PointsPage()),
+        );
+      },
+    ),
+  ),
+),
                       ],
                     );
                   },
@@ -207,7 +206,8 @@ class _StartPageState extends State<StartPage> {
                 child: RefreshIndicator(
                   onRefresh: _reload,
                   child: GridView.builder(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 100),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, _footerGap),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
@@ -219,7 +219,6 @@ class _StartPageState extends State<StartPage> {
                       final t = _publicTrips[i];
                       final isMine = t.comercialId == myId;
 
-                      // Tap → detalle del viaje
                       return GestureDetector(
                         onTap: () {
                           Navigator.of(context).push(
@@ -237,7 +236,7 @@ class _StartPageState extends State<StartPage> {
             ],
           ),
 
-          // ───────────────── Footer fijo con TU BottomBannerSection ─────────────────
+          // ───────────────── Footer fijo ─────────────────
           Positioned(
             left: 0,
             right: 0,
@@ -375,4 +374,3 @@ class _StartPageState extends State<StartPage> {
     );
   }
 }
-

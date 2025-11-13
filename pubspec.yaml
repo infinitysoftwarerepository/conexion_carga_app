@@ -37,3 +37,5 @@ flutter:
     - assets/images/logo_conexion_carga_oficial_cliente_V1.png
     - assets/images/ad_start_full.png
     - assets/icons/whatsapp.png
+    - assets/docs/politica_privacidad_conexion_carga.pdf
+    - assets/docs/terminos_uso_conexion_carga.pdf

@@ -1,17 +1,15 @@
-
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // 🌗 Lunita (toggle claro/oscuro)
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
-
-
 
 /// Página de Términos y Políticas.
 /// - El checkbox inicia en false.
 /// - Al activar el checkbox, se hace Navigator.pop(context, true).
 class TermsPage extends StatefulWidget {
   const TermsPage({super.key});
-  
 
   @override
   State<TermsPage> createState() => _TermsPageState();
@@ -24,8 +22,25 @@ class _TermsPageState extends State<TermsPage> {
     final newVal = v ?? false;
     setState(() => _accepted = newVal);
     if (newVal) {
-      // En cuanto acepta, regresamos informando 'true'
       Navigator.of(context).pop(true);
+    }
+  }
+
+  // Lanzar PDFs dentro de assets
+  Future<void> _openPdf(String assetPath) async {
+    final uri = Uri.parse(assetPath);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('No se pudo abrir el documento.')));
+    }
+  }
+
+  // Lanzar correo
+  Future<void> _sendEmail() async {
+    final uri = Uri(scheme: "mailto", path: "conexioncarga@gmail.com");
+    if (!await launchUrl(uri)) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('No se pudo abrir el correo.')));
     }
   }
 
@@ -34,16 +49,12 @@ class _TermsPageState extends State<TermsPage> {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
 
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Términos y Políticas'),
         centerTitle: true,
         actions: [
-          ThemeToggle(
-            color: cs.onSurface,
-            size: 22,
-          ),
+          ThemeToggle(color: cs.onSurface, size: 22),
           const SizedBox(width: 8),
         ],
       ),
@@ -54,76 +65,123 @@ class _TermsPageState extends State<TermsPage> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 child: DefaultTextStyle(
-                  // 👇 puedes haber cambiado tamaños con TextStyle(fontSize: ...)
                   style: theme.textTheme.bodyMedium!,
                   child: SelectionArea(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('1. Introducción',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            )),
+                        Text(
+                          '1. Introducción',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         const Text(
                           'Al registrarte y usar esta aplicación aceptas los presentes Términos y '
                           'Políticas de Privacidad. Si no estás de acuerdo, por favor no continúes '
-                          'con el registro.',
+                          'con el registro.\n\n'
+                          'Conexión Carga únicamente facilita la comunicación entre las partes y no '
+                          'asume responsabilidad alguna por la negociación o cumplimiento de los '
+                          'acuerdos.',
                         ),
                         const SizedBox(height: 16),
 
-                        Text('2. Uso de la aplicación',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            )),
+                        // 2. Uso de la aplicación
+                        Text(
+                          '2. Uso de la aplicación',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        RichText(
+                          text: TextSpan(
+                            style: theme.textTheme.bodyMedium,
+                            children: [
+                              const TextSpan(
+                                text:
+                                    'Te comprometes a utilizar la aplicación de forma lícita, a proporcionar '
+                                    'información veraz y a no realizar actividades que puedan afectar el '
+                                    'funcionamiento del servicio o la experiencia de otros usuarios.\n\n',
+                              ),
+                              TextSpan(
+                                text: 'Ver términos y condiciones de uso',
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    _openPdf(
+                                      "assets/docs/terminos_uso_conexion_carga.pdf",
+                                    );
+                                  },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // 3. Datos y privacidad
+                        Text(
+                          '3. Datos personales y privacidad',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        RichText(
+                          text: TextSpan(
+                            style: theme.textTheme.bodyMedium,
+                            children: [
+                              const TextSpan(
+                                text:
+                                    'La información personal que proporciones (por ejemplo, correo electrónico '
+                                    'e identificación) será tratada conforme a la normativa aplicable y con la '
+                                    'finalidad de prestarte el servicio. No compartimos tus datos con terceros '
+                                    'sin tu autorización, salvo obligación legal.\n\n',
+                              ),
+                              TextSpan(
+                                text: 'Ver política de privacidad',
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = () {
+                                    _openPdf(
+                                      "assets/docs/politica_privacidad_conexion_carga.pdf",
+                                    );
+                                  },
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        Text(
+                          '4. Autorización',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         const Text(
-                          'Te comprometes a utilizar la aplicación de forma lícita, a proporcionar '
-                          'información veraz y a no realizar actividades que puedan afectar el '
-                          'funcionamiento del servicio o la experiencia de otros usuarios.',
+                          'Al aceptar los términos de condiciones y la política de privacidad, '
+                          'también autorizo a Conexión Carga para ser consultado en las centrales '
+                          'de riesgo públicas y privadas, como también en las listas de restricción internacional',
                         ),
                         const SizedBox(height: 16),
 
-                        Text('3. Datos personales y privacidad',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            )),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'La información personal que proporciones (por ejemplo, correo electrónico '
-                          'e identificación) será tratada conforme a la normativa aplicable y con la '
-                          'finalidad de prestarte el servicio. No compartimos tus datos con terceros '
-                          'sin tu autorización, salvo obligación legal.',
+                        Text(
+                          '5. Propiedad intelectual',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                        const SizedBox(height: 16),
-
-                        Text('4. Tratamiento y conservación de datos',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            )),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Al registrarte autorizas el tratamiento de tus datos para los fines '
-                          'operativos de la plataforma. Conservaremos tus datos durante el tiempo '
-                          'necesario para cumplir la finalidad y las obligaciones legales.',
-                        ),
-                        const SizedBox(height: 16),
-
-                        Text('5. Seguridad',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            )),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Aplicamos medidas de seguridad razonables para proteger tu información. '
-                          'Sin embargo, ningún sistema es completamente infalible.',
-                        ),
-                        const SizedBox(height: 16),
-
-                        Text('6. Propiedad intelectual',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            )),
                         const SizedBox(height: 8),
                         const Text(
                           'Los contenidos, marcas y elementos distintivos de la aplicación pertenecen '
@@ -132,10 +190,12 @@ class _TermsPageState extends State<TermsPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        Text('7. Modificaciones',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            )),
+                        Text(
+                          '6. Modificaciones',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         const Text(
                           'Podremos actualizar estos Términos y Políticas en cualquier momento. '
@@ -143,15 +203,37 @@ class _TermsPageState extends State<TermsPage> {
                         ),
                         const SizedBox(height: 16),
 
-                        Text('8. Contacto',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            )),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Si tienes dudas sobre estos términos o el manejo de tus datos, '
-                          'ponte en contacto con nuestro equipo de soporte.',
+                        Text(
+                          '7. Contacto',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
+                        const SizedBox(height: 8),
+
+                        // Email clickeable
+                        RichText(
+                          text: TextSpan(
+                            style: theme.textTheme.bodyMedium,
+                            children: [
+                              const TextSpan(
+                                text:
+                                    'Si tienes dudas sobre estos términos o el manejo de tus datos, '
+                                    'ponte en contacto con el correo de contacto:\n\n',
+                              ),
+                              TextSpan(
+                                text: 'conexioncarga@gmail.com',
+                                style: const TextStyle(
+                                  color: Colors.blue,
+                                  decoration: TextDecoration.underline,
+                                ),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = _sendEmail,
+                              ),
+                            ],
+                          ),
+                        ),
+
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -160,7 +242,7 @@ class _TermsPageState extends State<TermsPage> {
               ),
             ),
 
-            // Check fijo abajo
+            // Check abajo
             Container(
               width: double.infinity,
               decoration: BoxDecoration(

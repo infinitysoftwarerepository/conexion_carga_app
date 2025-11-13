@@ -1,5 +1,7 @@
 // lib/features/loads/presentation/pages/start_page.dart
 import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -8,6 +10,7 @@ import 'package:conexion_carga_app/app/widgets/molecules/start_headline.dart';
 import 'package:conexion_carga_app/app/widgets/molecules/bottom_banner_section.dart';
 import 'package:conexion_carga_app/app/widgets/new_action_fab.dart';
 import 'package:conexion_carga_app/app/widgets/glyph_filter.dart';
+import 'package:conexion_carga_app/app/widgets/glyph_search.dart';
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 import 'package:conexion_carga_app/app/widgets/load_card.dart';
 
@@ -38,8 +41,18 @@ class StartPage extends StatefulWidget {
 }
 
 class _StartPageState extends State<StartPage> {
+  // 🔢 Rangos globales de filtros
+  static const double kMinTons = 0;
+  static const double kMaxTons = 60;
+  static const double kMinPrice = 0;
+  static const double kMaxPrice = 100_000_000;
+
   final GlobalKey _profileKey = GlobalKey();
   List<Trip> _publicTrips = const <Trip>[];
+
+  // búsqueda + filtros
+  String _searchQuery = '';
+  _TripFilters _filters = _TripFilters();
 
   // control de animaciones
   bool _showAd = true;
@@ -76,26 +89,367 @@ class _StartPageState extends State<StartPage> {
   }
 
   Future<void> _openWhatsApp() async {
-  const phone = '+573207259517';
+    const phone = '+573207259517';
 
-  const message = '''
+    const message = '''
 Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación entre las partes y no asume responsabilidad alguna por la negociación o cumplimiento de los acuerdos. Puedo reportar irregularidades al correo electrónico: conexioncarga@gmail.com
 ''';
 
-  final encodedMessage = Uri.encodeComponent(message);
-  final Uri url = Uri.parse('https://wa.me/${phone.replaceAll('+', '')}?text=$encodedMessage');
+    final encodedMessage = Uri.encodeComponent(message);
+    final Uri url =
+        Uri.parse('https://wa.me/${phone.replaceAll('+', '')}?text=$encodedMessage');
 
-  if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No se pudo abrir WhatsApp')),
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir WhatsApp')),
+      );
+    }
+  }
+
+  // ------------------- BÚSQUEDA -------------------
+
+  void _openSearchSheet() {
+    final controller = TextEditingController(text: _searchQuery);
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        final bottom = MediaQuery.of(ctx).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Buscar viajes',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText:
+                      'Escribe origen, destino, tipo de carga, vehículo, comercial, conductor...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.clear),
+                    onPressed: () {
+                      controller.clear();
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    },
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cerrar'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
-}
 
+  // ------------------- FILTROS -------------------
+
+  void _openFiltersSheet() {
+    if (_publicTrips.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aún no hay viajes para filtrar.')),
+      );
+      return;
+    }
+
+    // solo para saber si tiene sentido mostrar sliders
+    final tonsValues = _publicTrips
+        .map((t) => t.tons)
+        .where((v) => v != null)
+        .cast<double>()
+        .toList();
+    final priceValues = _publicTrips
+        .map((t) => t.price)
+        .where((v) => v != null)
+        .cast<num>()
+        .toList();
+
+    // ▶️ Rangos fijos pedidos
+    const double tonsMin = kMinTons;
+    const double tonsMax = kMaxTons;
+
+    const double priceMin = kMinPrice;
+    const double priceMax = kMaxPrice;
+
+    _TripFilters local = _filters.copy();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (ctx) {
+        final bottom = MediaQuery.of(ctx).viewInsets.bottom;
+
+        String _fmtMillions(num v) {
+          final m = v / 1_000_000;
+          return '${m.toStringAsFixed(1)} M';
+        }
+
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final tonsRange = RangeValues(
+              local.minTons ?? tonsMin,
+              local.maxTons ?? tonsMax,
+            );
+
+            final priceRange = RangeValues(
+              (local.minPrice ?? priceMin).toDouble(),
+              (local.maxPrice ?? priceMax).toDouble(),
+            );
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottom),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Filtros',
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // textos
+                    _FilterTextField(
+                      label: 'Origen',
+                      initialValue: local.origin,
+                      onChanged: (v) =>
+                          setModalState(() => local.origin = v.trim()),
+                    ),
+                    _FilterTextField(
+                      label: 'Destino',
+                      initialValue: local.destination,
+                      onChanged: (v) =>
+                          setModalState(() => local.destination = v.trim()),
+                    ),
+                    _FilterTextField(
+                      label: 'Tipo de carga',
+                      initialValue: local.cargoType,
+                      onChanged: (v) =>
+                          setModalState(() => local.cargoType = v.trim()),
+                    ),
+                    _FilterTextField(
+                      label: 'Tipo de vehículo',
+                      initialValue: local.vehicle,
+                      onChanged: (v) =>
+                          setModalState(() => local.vehicle = v.trim()),
+                    ),
+                    _FilterTextField(
+                      label: 'Estado',
+                      initialValue: local.estado,
+                      onChanged: (v) =>
+                          setModalState(() => local.estado = v.trim()),
+                    ),
+                    _FilterTextField(
+                      label: 'Comercial',
+                      initialValue: local.comercial,
+                      onChanged: (v) =>
+                          setModalState(() => local.comercial = v.trim()),
+                    ),
+                    _FilterTextField(
+                      label: 'Contacto',
+                      initialValue: local.contacto,
+                      onChanged: (v) =>
+                          setModalState(() => local.contacto = v.trim()),
+                    ),
+                    _FilterTextField(
+                      label: 'Conductor',
+                      initialValue: local.conductor,
+                      onChanged: (v) =>
+                          setModalState(() => local.conductor = v.trim()),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // rango toneladas
+                    if (tonsValues.isNotEmpty) ...[
+                      const Text(
+                        'Peso (Toneladas)',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      RangeSlider(
+                        values: tonsRange,
+                        min: tonsMin,
+                        max: max(tonsMax, tonsMin + 1),
+                        divisions: 20,
+                        labels: RangeLabels(
+                          tonsRange.start.toStringAsFixed(1),
+                          tonsRange.end.toStringAsFixed(1),
+                        ),
+                        onChanged: (values) {
+                          setModalState(() {
+                            local.minTons = values.start;
+                            local.maxTons = values.end;
+                          });
+                        },
+                      ),
+                    ],
+
+                    // rango precio
+                    if (priceValues.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Valor del viaje (millones de pesos)',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      RangeSlider(
+                        values: priceRange,
+                        min: priceMin,
+                        max: max(priceMax, priceMin + 1),
+                        // pasos de 0.5 millones
+                        divisions:
+                            ((priceMax - priceMin) ~/ 500000).clamp(1, 1000),
+                        labels: RangeLabels(
+                          _fmtMillions(priceRange.start),
+                          _fmtMillions(priceRange.end),
+                        ),
+                        onChanged: (values) {
+                          setModalState(() {
+                            // los valores siguen en pesos, solo el label está en millones
+                            local.minPrice = values.start;
+                            local.maxPrice = values.end;
+                          });
+                        },
+                      ),
+                    ],
+
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _filters = _TripFilters();
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Limpiar filtros'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _filters = local;
+                            });
+                            Navigator.pop(ctx);
+                          },
+                          child: const Text('Aplicar filtros'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  // aplicar búsqueda + filtros sobre la lista original
+  List<Trip> _applyFiltersTo(List<Trip> source) {
+    final q = _searchQuery.trim().toLowerCase();
+
+    bool containsIgnore(String? value, String pattern) {
+      if (pattern.trim().isEmpty) return true;
+      if (value == null || value.trim().isEmpty) return false;
+      return value.toLowerCase().contains(pattern.toLowerCase());
+    }
+
+    return source.where((t) {
+      // filtros de texto
+      if (!containsIgnore(t.origin, _filters.origin)) return false;
+      if (!containsIgnore(t.destination, _filters.destination)) return false;
+      if (!containsIgnore(t.cargoType, _filters.cargoType)) return false;
+      if (!containsIgnore(t.vehicle, _filters.vehicle)) return false;
+      if (!containsIgnore(t.estado, _filters.estado)) return false;
+      if (!containsIgnore(t.comercial, _filters.comercial)) return false;
+      if (!containsIgnore(t.contacto, _filters.contacto)) return false;
+      // 👇 nuevo filtro por conductor
+      if (!containsIgnore(t.conductor, _filters.conductor)) return false;
+
+      // rangos numéricos
+      if (_filters.minTons != null) {
+        if (t.tons == null || t.tons! < _filters.minTons!) return false;
+      }
+      if (_filters.maxTons != null) {
+        if (t.tons == null || t.tons! > _filters.maxTons!) return false;
+      }
+
+      if (_filters.minPrice != null) {
+        final v = t.price;
+        if (v == null || v < _filters.minPrice!) return false;
+      }
+      if (_filters.maxPrice != null) {
+        final v = t.price;
+        if (v == null || v > _filters.maxPrice!) return false;
+      }
+
+      // búsqueda libre
+      if (q.isEmpty) return true;
+
+      final buffer = StringBuffer()
+        ..write(t.origin)
+        ..write(' ')
+        ..write(t.destination)
+        ..write(' ')
+        ..write(t.cargoType)
+        ..write(' ')
+        ..write(t.vehicle)
+        ..write(' ')
+        ..write(t.estado)
+        ..write(' ')
+        ..write(t.comercial)
+        ..write(' ')
+        ..write(t.contacto)
+        ..write(' ')
+        ..write(t.conductor ?? '')
+        ..write(' ')
+        ..write(t.tons?.toString() ?? '')
+        ..write(' ')
+        ..write(t.price?.toString() ?? '');
+
+      final haystack = buffer.toString().toLowerCase();
+      return haystack.contains(q);
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
     final myId = AuthSession.instance.user.value?.id ?? '';
+    final trips = _applyFiltersTo(_publicTrips);
 
     return Scaffold(
       appBar: _buildAppBar(),
@@ -110,21 +464,24 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                   onRefresh: _reload,
                   child: GridView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, _footerGap),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    padding:
+                        const EdgeInsets.fromLTRB(12, 0, 12, _footerGap),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       childAspectRatio: 0.86,
                     ),
-                    itemCount: _publicTrips.length,
+                    itemCount: trips.length,
                     itemBuilder: (ctx, i) {
-                      final t = _publicTrips[i];
+                      final t = trips[i];
                       final isMine = t.comercialId == myId;
                       return GestureDetector(
                         onTap: () {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => TripDetailPage(trip: t)),
+                            MaterialPageRoute(
+                                builder: (_) => TripDetailPage(trip: t)),
                           );
                         },
                         child: LoadCard(trip: t, isMine: isMine),
@@ -144,7 +501,8 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
             child: Material(
               elevation: 12,
               color: Theme.of(context).scaffoldBackgroundColor,
-              child: const BottomBannerSection(donationNumber: '008-168-23331'),
+              child:
+                  const BottomBannerSection(donationNumber: '008-168-23331'),
             ),
           ),
 
@@ -188,12 +546,15 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 6),
                       margin: const EdgeInsets.only(bottom: 6),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Text('¿Dudas ?', style: TextStyle(fontWeight: FontWeight.w700)),
+                        children: [
+                          Text('¿Dudas ?',
+                              style:
+                                  TextStyle(fontWeight: FontWeight.w700)),
                         ],
                       ),
                     ),
@@ -218,7 +579,8 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(8),
-                        child: Image.asset(_whatsappIcon, fit: BoxFit.contain),
+                        child: Image.asset(_whatsappIcon,
+                            fit: BoxFit.contain),
                       ),
                     ),
                   ),
@@ -290,7 +652,8 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                   foregroundColor: fg,
                   onTap: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const RegistrationFormPage()),
+                      MaterialPageRoute(
+                          builder: (_) => const RegistrationFormPage()),
                     );
                   },
                 ),
@@ -331,7 +694,8 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                 foregroundColor: fg,
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const MyLoadsPage()),
+                    MaterialPageRoute(
+                        builder: (_) => const MyLoadsPage()),
                   );
                 },
               ),
@@ -347,7 +711,8 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                 foregroundColor: Colors.white,
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const PointsPage()),
+                    MaterialPageRoute(
+                        builder: (_) => const PointsPage()),
                   );
                 },
               ),
@@ -366,10 +731,11 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
       foregroundColor: isLight ? Colors.black : Colors.white,
       toolbarHeight: 72,
       centerTitle: false,
-      leading: IconButton(
-        tooltip: 'Buscar',
-        icon: const Icon(Icons.search),
-        onPressed: () {},
+      leading: GlyphSearch(
+        onTap: _openSearchSheet,
+        color: isLight ? Colors.black87 : Colors.white,
+        tooltip: 'Buscar viajes',
+        padding: const EdgeInsets.only(left: 8),
       ),
       title: ValueListenableBuilder<AuthUser?>(
         valueListenable: AuthSession.instance.user,
@@ -398,7 +764,10 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                     icon: const Icon(Icons.person_outline),
                     onPressed: _openProfileMenu,
                   ),
-                const GlyphFilter(size: 20),
+                GlyphFilter(
+                  size: 20,
+                  onTap: _openFiltersSheet,
+                ),
                 const ThemeToggle(size: 22),
                 const SizedBox(width: 8),
               ],
@@ -464,14 +833,107 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
               onTap: () {
                 Navigator.pop(context);
                 AuthSession.instance.signOut();
-                ScaffoldMessenger.of(context)
-                    .showSnackBar(const SnackBar(content: Text('Sesión cerrada.')));
+                ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Sesión cerrada.')));
                 _reload();
               },
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+// ===================== Clases auxiliares =====================
+
+class _TripFilters {
+  String origin;
+  String destination;
+  String cargoType;
+  String vehicle;
+  String estado;
+  String comercial;
+  String contacto;
+  String conductor;
+
+  double? minTons;
+  double? maxTons;
+  num? minPrice;
+  num? maxPrice;
+
+  _TripFilters({
+    this.origin = '',
+    this.destination = '',
+    this.cargoType = '',
+    this.vehicle = '',
+    this.estado = '',
+    this.comercial = '',
+    this.contacto = '',
+    this.conductor = '',
+    this.minTons,
+    this.maxTons,
+    this.minPrice,
+    this.maxPrice,
+  });
+
+  _TripFilters copy() => _TripFilters(
+        origin: origin,
+        destination: destination,
+        cargoType: cargoType,
+        vehicle: vehicle,
+        estado: estado,
+        comercial: comercial,
+        contacto: contacto,
+        conductor: conductor,
+        minTons: minTons,
+        maxTons: maxTons,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+      );
+
+  bool get isEmpty =>
+      origin.isEmpty &&
+      destination.isEmpty &&
+      cargoType.isEmpty &&
+      vehicle.isEmpty &&
+      estado.isEmpty &&
+      comercial.isEmpty &&
+      contacto.isEmpty &&
+      conductor.isEmpty &&
+      minTons == null &&
+      maxTons == null &&
+      minPrice == null &&
+      maxPrice == null;
+}
+
+class _FilterTextField extends StatelessWidget {
+  final String label;
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+
+  const _FilterTextField({
+    super.key,
+    required this.label,
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: TextFormField(
+        initialValue: initialValue,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          isDense: true,
+        ),
+        onChanged: onChanged,
+      ),
     );
   }
 }

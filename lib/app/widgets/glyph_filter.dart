@@ -8,14 +8,18 @@ class GlyphFilter extends StatelessWidget {
   final double height;
   final EdgeInsets padding;
 
+  // size se mantiene por compatibilidad, aunque no se usa directamente
+  final int size;
+
   const GlyphFilter({
     super.key,
     this.onTap,
     this.color = const Color(0xFF757575), // gris medio
     this.topWidth = 22,
-    this.step = 6,                        // 22, 16, 10
+    this.step = 6, // 22, 16, 10
     this.height = 3,
-    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 12), required int size,
+    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+    this.size = 22,
   });
 
   @override

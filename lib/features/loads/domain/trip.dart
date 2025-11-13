@@ -1,3 +1,5 @@
+// lib/features/loads/domain/trip.dart
+
 class Trip {
   final String id;
   final String origin;
@@ -10,9 +12,10 @@ class Trip {
   final bool activo;
   final String? comercialId;
 
-  // 🔵 Nuevos opcionales
+  // 🔵 Opcionales
   final String? comercial;
   final String? contacto;
+  final String? conductor;   // 👈 nuevo
 
   Trip({
     required this.id,
@@ -27,6 +30,7 @@ class Trip {
     this.comercialId,
     this.comercial,
     this.contacto,
+    this.conductor, // 👈 nuevo
   });
 
   factory Trip.fromJson(Map<String, dynamic> json) {
@@ -40,7 +44,11 @@ class Trip {
     num? _toNum(dynamic v) {
       if (v == null) return null;
       if (v is num) return v;
-      if (v is String) return num.tryParse(v.replaceAll('.', '').replaceAll(',', '.'));
+      if (v is String) {
+        return num.tryParse(
+          v.replaceAll('.', '').replaceAll(',', '.'),
+        );
+      }
       return null;
     }
 
@@ -58,6 +66,8 @@ class Trip {
       // 🔵 nuevos
       comercial: (json['comercial'] ?? '').toString(),
       contacto: (json['contacto'] ?? '').toString(),
+      conductor:
+          (json['conductor'] ?? json['driver'] ?? '').toString(), // 👈 nuevo
     );
   }
 
@@ -75,5 +85,6 @@ class Trip {
         // 🔵 nuevos
         'comercial': comercial,
         'contacto': contacto,
+        'conductor': conductor, // 👈 nuevo
       };
 }

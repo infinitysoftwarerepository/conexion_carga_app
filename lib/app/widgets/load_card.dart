@@ -163,7 +163,7 @@ class LoadCard extends StatelessWidget {
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              'Mas Info Aquí!',
+                              'Más info aquí !',
                               maxLines: 1,
                               softWrap: false,
                               overflow: TextOverflow.ellipsis,

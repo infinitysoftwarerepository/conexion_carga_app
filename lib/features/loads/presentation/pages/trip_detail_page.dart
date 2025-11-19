@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +10,7 @@ import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
 import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
+import 'package:conexion_carga_app/app/widgets/time_bubbles.dart';
 
 final _money = NumberFormat.simpleCurrency(locale: 'es_CO', name: 'COP');
 
@@ -22,10 +25,42 @@ class TripDetailPage extends StatefulWidget {
 class _TripDetailPageState extends State<TripDetailPage> {
   late Future<Map<String, dynamic>> _future;
 
+  Duration? _remaining;
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
     _future = LoadsApi.fetchTripDetailRaw(widget.trip.id);
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _updateRemaining() {
+    final rem = widget.trip.remaining;
+    if (!mounted) return;
+    setState(() {
+      _remaining = rem;
+    });
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+
+    if (widget.trip.expiresAt == null) {
+      _remaining = null;
+      return;
+    }
+
+    _updateRemaining();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateRemaining();
+    });
   }
 
   @override
@@ -45,10 +80,12 @@ class _TripDetailPageState extends State<TripDetailPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snap.hasError) {
-            return Center(child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('Error: ${snap.error}'),
-            ));
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('Error: ${snap.error}'),
+              ),
+            );
           }
 
           final raw = Map<String, dynamic>.from(snap.data ?? {});
@@ -63,33 +100,55 @@ class _TripDetailPageState extends State<TripDetailPage> {
             final v = raw[key];
             if (v is num) return v;
             if (v is String) {
-              final parsed = num.tryParse(v.replaceAll('.', '').replaceAll(',', '.'));
+              final parsed = num.tryParse(
+                v.replaceAll('.', '').replaceAll(',', '.'),
+              );
               if (parsed != null) return parsed;
             }
             return fallback;
           }
 
-          final origen       = s('origen',       fallback: trip.origin);
-          final destino      = s('destino',      fallback: trip.destination);
-          final pesoNum      = n('peso',         fallback: trip.tons);
-          final tipoCarga    = s('tipo_carga',   fallback: trip.cargoType);
-          final tipoVehiculo = s('tipo_vehiculo',fallback: trip.vehicle);
-          final valorNum     = n('valor',        fallback: trip.price);
-          final conductor    = s('conductor',    fallback: '');
-          final observaciones= s('observaciones',fallback: '');
-          final comercial    = s('comercial',    fallback: trip.comercial ?? '');
-          final contacto     = s('contacto',     fallback: trip.contacto ?? '');
+          final origen        = s('origen',        fallback: trip.origin);
+          final destino       = s('destino',       fallback: trip.destination);
+          final pesoNum       = n('peso',          fallback: trip.tons);
+          final tipoCarga     = s('tipo_carga',    fallback: trip.cargoType);
+          final tipoVehiculo  = s('tipo_vehiculo', fallback: trip.vehicle);
+          final valorNum      = n('valor',         fallback: trip.price);
+          final conductor     = s('conductor',     fallback: '');
+          final observaciones = s('observaciones', fallback: '');
+          final comercial     = s('comercial',     fallback: trip.comercial ?? '');
+          final contacto      = s('contacto',      fallback: trip.contacto ?? '');
 
           final myUserId  = AuthSession.instance.user.value?.id ?? '';
           final creadorId = s('comercial_id', fallback: trip.comercialId ?? '');
           final isMine    = creadorId == myUserId;
+
+          final Duration? rem = _remaining ?? trip.remaining;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$origen → $destino', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  '$origen → $destino',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+
+                if (rem != null && rem > Duration.zero) ...[
+                  const SizedBox(height: 10),
+                  TimeBubbleRowBig(remaining: rem),
+                ] else if (rem != null && rem <= Duration.zero) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Este viaje ya está vencido.',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 12),
 
                 _row('Peso',            (pesoNum != null) ? _fmtTons(pesoNum) : '-'),
@@ -105,7 +164,10 @@ class _TripDetailPageState extends State<TripDetailPage> {
 
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.amber.shade300,
                     borderRadius: BorderRadius.circular(16),
@@ -128,7 +190,9 @@ class _TripDetailPageState extends State<TripDetailPage> {
       bottomNavigationBar: FutureBuilder<Map<String, dynamic>>(
         future: _future,
         builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) return const SizedBox.shrink();
+          if (snap.connectionState == ConnectionState.waiting) {
+            return const SizedBox.shrink();
+          }
 
           final raw = Map<String, dynamic>.from(snap.data ?? {});
           final trip = widget.trip;
@@ -141,12 +205,15 @@ class _TripDetailPageState extends State<TripDetailPage> {
           final myUserId  = AuthSession.instance.user.value?.id ?? '';
           final creadorId = s('comercial_id', fallback: trip.comercialId ?? '');
           final isMine    = creadorId == myUserId;
-
-          final contacto  = s('contacto', fallback: trip.contacto ?? '');
+          final contacto  = s('contacto',      fallback: trip.contacto ?? '');
 
           Widget wppIcon() => Padding(
                 padding: const EdgeInsets.only(right: 6),
-                child: Image.asset('assets/icons/whatsapp.png', height: 18, fit: BoxFit.contain),
+                child: Image.asset(
+                  'assets/icons/whatsapp.png',
+                  height: 18,
+                  fit: BoxFit.contain,
+                ),
               );
 
           void onContact() => _openWhatsApp(context, contacto);
@@ -193,12 +260,23 @@ class _TripDetailPageState extends State<TripDetailPage> {
                             icon: const Icon(Icons.delete_forever_outlined),
                             label: const Text('Eliminar'),
                             onPressed: () async {
-                              await LoadsApi.expire(trip.id);
-                              if (!mounted) return;
-                              Navigator.pop(context, true);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Viaje eliminado.')),
-                              );
+                              try {
+                                await LoadsApi.expire(trip.id);
+                                if (!mounted) return;
+                                Navigator.pop(context, true);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Viaje eliminado.'),
+                                  ),
+                                );
+                              } catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Error al eliminar: $e'),
+                                  ),
+                                );
+                              }
                             },
                           ),
                         ),
@@ -237,8 +315,19 @@ class _TripDetailPageState extends State<TripDetailPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 160, child: Text('$label:', style: const TextStyle(color: Colors.black54))),
-            Expanded(child: Text(value.isEmpty ? '-' : value, style: const TextStyle(fontWeight: FontWeight.w600))),
+            SizedBox(
+              width: 160,
+              child: Text(
+                '$label:',
+                style: const TextStyle(color: Colors.black54),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                value.isEmpty ? '-' : value,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
           ],
         ),
       );
@@ -249,9 +338,8 @@ class _TripDetailPageState extends State<TripDetailPage> {
     return '${d.toStringAsFixed(1)} T';
   }
 
-  String _fmtMoney(num v) => NumberFormat.simpleCurrency(locale: 'es_CO', name: 'COP')
-      .format(v)
-      .replaceAll(',00', '');
+  String _fmtMoney(num v) =>
+      _money.format(v).replaceAll(',00', '');
 
   Future<void> _openWhatsApp(BuildContext context, String phoneRaw) async {
     final digits = phoneRaw.replaceAll(RegExp(r'[^0-9+]'), '');
@@ -263,7 +351,8 @@ class _TripDetailPageState extends State<TripDetailPage> {
       return;
     }
     final normalized = digits.startsWith('+') ? digits : '+57$digits';
-    final uri = Uri.parse('https://wa.me/${normalized.replaceAll('+', '')}');
+    final uri =
+        Uri.parse('https://wa.me/${normalized.replaceAll('+', '')}');
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (_) {
@@ -274,31 +363,38 @@ class _TripDetailPageState extends State<TripDetailPage> {
     }
   }
 
-  Future<void> _exportTrip(BuildContext context, Map<String, dynamic> raw, Trip trip) async {
+  Future<void> _exportTrip(
+    BuildContext context,
+    Map<String, dynamic> raw,
+    Trip trip,
+  ) async {
     String s(String key, {String fallback = ''}) {
       final v = raw[key];
       return (v == null) ? fallback : v.toString().trim();
     }
+
     num? n(String key, {num? fallback}) {
       final v = raw[key];
       if (v is num) return v;
       if (v is String) {
-        final parsed = num.tryParse(v.replaceAll('.', '').replaceAll(',', '.'));
+        final parsed = num.tryParse(
+          v.replaceAll('.', '').replaceAll(',', '.'),
+        );
         if (parsed != null) return parsed;
       }
       return fallback;
     }
 
-    final origen       = s('origen',       fallback: trip.origin);
-    final destino      = s('destino',      fallback: trip.destination);
-    final pesoNum      = n('peso',         fallback: trip.tons);
-    final tipoCarga    = s('tipo_carga',   fallback: trip.cargoType);
-    final tipoVehiculo = s('tipo_vehiculo',fallback: trip.vehicle);
-    final valorNum     = n('valor',        fallback: trip.price);
-    final conductor    = s('conductor',    fallback: '');
-    final observaciones= s('observaciones',fallback: '');
-    final comercial    = s('comercial',    fallback: trip.comercial ?? '');
-    final contacto     = s('contacto',     fallback: trip.contacto ?? '');
+    final origen        = s('origen',        fallback: trip.origin);
+    final destino       = s('destino',       fallback: trip.destination);
+    final pesoNum       = n('peso',          fallback: trip.tons);
+    final tipoCarga     = s('tipo_carga',    fallback: trip.cargoType);
+    final tipoVehiculo  = s('tipo_vehiculo', fallback: trip.vehicle);
+    final valorNum      = n('valor',         fallback: trip.price);
+    final conductor     = s('conductor',     fallback: '');
+    final observaciones = s('observaciones', fallback: '');
+    final comercial     = s('comercial',     fallback: trip.comercial ?? '');
+    final contacto      = s('contacto',      fallback: trip.contacto ?? '');
 
     final buffer = StringBuffer()
       ..writeln('📦 Detalle del viaje')
@@ -315,7 +411,9 @@ class _TripDetailPageState extends State<TripDetailPage> {
     await Clipboard.setData(ClipboardData(text: buffer.toString()));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Información copiada. ¡Lista para exportar!')),
+      const SnackBar(
+        content: Text('Información copiada. ¡Lista para exportar!'),
+      ),
     );
   }
 }

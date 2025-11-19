@@ -27,12 +27,14 @@ class _NewTripPageState extends State<NewTripPage> {
   final _comercialCtrl = TextEditingController();
   final _contactoCtrl = TextEditingController();
   final _conductorCtrl = TextEditingController();
-  // final _vehiculoCtrl = TextEditingController(); // eliminado
   final _tipoVehiculoCtrl = TextEditingController();
   final _obsCtrl = TextEditingController();
 
   bool _premium = false;
-  int _durationHours = 24;
+
+  /// Valor que se envía al backend en `duration_hours`
+  /// 6 por defecto para que el primer chip ya quede seleccionado.
+  int _durationHours = 6;
 
   // Caché de catálogos por endpoint
   final Map<String, List<String>> _cache = {};
@@ -42,13 +44,11 @@ class _NewTripPageState extends State<NewTripPage> {
     super.initState();
     final u = AuthSession.instance.user.value;
 
-    // Precarga el nombre del usuario logueado en "Comercial" (editable por el usuario).
-    // Si el backend necesita otro formato, aquí mismo puedes ajustarlo.
     final fullName = [
       (u?.firstName ?? '').trim(),
       (u?.lastName ?? '').trim(),
     ].where((s) => s.isNotEmpty).join(' ');
-    _comercialCtrl.text = fullName; // ← autofill de cortesía (editable)
+    _comercialCtrl.text = fullName;
   }
 
   @override
@@ -61,7 +61,6 @@ class _NewTripPageState extends State<NewTripPage> {
     _comercialCtrl.dispose();
     _contactoCtrl.dispose();
     _conductorCtrl.dispose();
-    // _vehiculoCtrl.dispose(); // eliminado
     _tipoVehiculoCtrl.dispose();
     _obsCtrl.dispose();
     super.dispose();
@@ -69,16 +68,39 @@ class _NewTripPageState extends State<NewTripPage> {
 
   // -------------------- FALLBACKS LOCALES --------------------
   static const _fallbackMunicipios = <String>[
-    'Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga',
-    'Cúcuta', 'Pereira', 'Manizales', 'Ibagué', 'Villavicencio', 'Santa Marta'
+    'Bogotá',
+    'Medellín',
+    'Cali',
+    'Barranquilla',
+    'Cartagena',
+    'Bucaramanga',
+    'Cúcuta',
+    'Pereira',
+    'Manizales',
+    'Ibagué',
+    'Villavicencio',
+    'Santa Marta'
   ];
   static const _fallbackTiposCarga = <String>[
-    'Granel sólido','Granel líquido','Contenedor FCL','Contenedor LCL',
-    'Fraccionada','Peligrosa','Refrigerada','Perecedera','Material de construcción'
+    'Granel sólido',
+    'Granel líquido',
+    'Contenedor FCL',
+    'Contenedor LCL',
+    'Fraccionada',
+    'Peligrosa',
+    'Refrigerada',
+    'Perecedera',
+    'Material de construcción'
   ];
   static const _fallbackTiposVehiculo = <String>[
-    'Tracto','Sencillo','Doble troque','Turbo sencillo','NHR','NPR',
-    'Vehículo rígido de dos ejes','Vehículo rígido de tres ejes'
+    'Tracto',
+    'Sencillo',
+    'Doble troque',
+    'Turbo sencillo',
+    'NHR',
+    'NPR',
+    'Vehículo rígido de dos ejes',
+    'Vehículo rígido de tres ejes'
   ];
 
   List<String> _fallbackFor(String endpoint) {
@@ -119,9 +141,22 @@ class _NewTripPageState extends State<NewTripPage> {
       if (json is List) {
         list = json;
       } else if (json is Map) {
-        final keys = ['data','items','rows','result','results','municipios','tipos','catalogo','catalogos'];
+        final keys = [
+          'data',
+          'items',
+          'rows',
+          'result',
+          'results',
+          'municipios',
+          'tipos',
+          'catalogo',
+          'catalogos'
+        ];
         for (final k in keys) {
-          if (json[k] is List) { list = json[k] as List; break; }
+          if (json[k] is List) {
+            list = json[k] as List;
+            break;
+          }
         }
         if (list.isEmpty) {
           List<dynamic> biggest = const [];
@@ -136,7 +171,13 @@ class _NewTripPageState extends State<NewTripPage> {
           .map((e) {
             if (e is String) return e;
             if (e is Map) {
-              return (e['nombre'] ?? e['name'] ?? e['label'] ?? e['title'] ?? e['descripcion'] ?? '').toString();
+              return (e['nombre'] ??
+                      e['name'] ??
+                      e['label'] ??
+                      e['title'] ??
+                      e['descripcion'] ??
+                      '')
+                  .toString();
             }
             return '';
           })
@@ -168,10 +209,15 @@ class _NewTripPageState extends State<NewTripPage> {
         _tipoCargaCtrl.text.isEmpty ||
         _pesoCtrl.text.isEmpty ||
         _valorCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Completa los campos obligatorios.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Completa los campos obligatorios.')),
+      );
       return;
     }
+
+    // DEBUG: para que veas en consola qué valor se va a enviar
+    // ignore: avoid_print
+    print('[NEW TRIP] duration_hours seleccionado = $_durationHours');
 
     final tok = AuthSession.instance.token ?? '';
     final uri = Uri.parse('${Env.baseUrl}/api/loads');
@@ -182,26 +228,38 @@ class _NewTripPageState extends State<NewTripPage> {
       "destino": _destinoCtrl.text.trim(),
       "tipo_carga": _tipoCargaCtrl.text.trim(),
       "peso": double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
-      "valor": int.tryParse(_valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ?? 0,
-      "conductor": _conductorCtrl.text.trim().isEmpty ? null : _conductorCtrl.text.trim(),
-      // "vehiculo_id": _vehiculoCtrl.text.trim().isEmpty ? null : _vehiculoCtrl.text.trim(), // eliminado
-      "tipo_vehiculo": _tipoVehiculoCtrl.text.trim().isEmpty ? null : _tipoVehiculoCtrl.text.trim(),
-      "observaciones": _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
+      "valor":
+          int.tryParse(_valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ??
+              0,
+      "conductor": _conductorCtrl.text.trim().isEmpty
+          ? null
+          : _conductorCtrl.text.trim(),
+      "tipo_vehiculo": _tipoVehiculoCtrl.text.trim().isEmpty
+          ? null
+          : _tipoVehiculoCtrl.text.trim(),
+      "observaciones":
+          _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
+
+      // 👇 AQUÍ se manda EXACTAMENTE el valor del chip seleccionado
       "duration_hours": _durationHours,
       "premium_trip": _premium,
 
-      // 🔧 CAMBIO: enviar SIEMPRE lo que el usuario escribió en Comercial y Contacto
       "comercial": _comercialCtrl.text.trim(),
       "contacto": _contactoCtrl.text.trim(),
-      // (si el backend quisiera nulls en blanco, cámbialo por:  .isEmpty ? null : ...)
     };
 
     try {
       final res = await http.post(
         uri,
-        headers: {'Content-Type': 'application/json', if (tok.isNotEmpty) 'Authorization': 'Bearer $tok'},
+        headers: {
+          'Content-Type': 'application/json',
+          if (tok.isNotEmpty) 'Authorization': 'Bearer $tok',
+        },
         body: convert.jsonEncode(body),
       );
+
+      // ignore: avoid_print
+      print('[NEW TRIP] Respuesta ${res.statusCode}: ${res.body}');
 
       if (res.statusCode != 201) {
         String msg = 'No se pudo registrar el viaje (${res.statusCode}).';
@@ -215,13 +273,20 @@ class _NewTripPageState extends State<NewTripPage> {
       if (!mounted) return;
       final me = AuthSession.instance.user.value;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Viaje registrado para ${me?.firstName ?? 'ti'}')),
+        SnackBar(
+          content:
+              Text('Viaje registrado para ${me?.firstName ?? 'ti'}'),
+        ),
       );
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+        SnackBar(
+          content: Text(
+            e.toString().replaceFirst('Exception: ', ''),
+          ),
+        ),
       );
     }
   }
@@ -267,7 +332,8 @@ class _NewTripPageState extends State<NewTripPage> {
               label: 'Peso (T)',
               hint: 'Ej: 32',
               controller: _pesoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
               icon: Icons.scale_outlined,
             ),
           ),
@@ -305,7 +371,6 @@ class _NewTripPageState extends State<NewTripPage> {
           ),
           const SizedBox(height: 6),
           _Row2(
-            // Aquí antes estaba “Vehículo (placa)”; se quita.
             left: DropdownCatalogField(
               label: 'Tipo de vehículo',
               hint: 'Tracto, Sencillo, …',
@@ -314,7 +379,7 @@ class _NewTripPageState extends State<NewTripPage> {
               endpoint: '/api/catalogos/tipos-vehiculo',
               loader: _fetchCatalog,
             ),
-            right: const SizedBox.shrink(), // mantiene la grilla estable
+            right: const SizedBox.shrink(),
           ),
           const SizedBox(height: 6),
           AppMultilineField(
@@ -339,7 +404,10 @@ class _NewTripPageState extends State<NewTripPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Tipo de viaje', style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  'Tipo de viaje',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -347,7 +415,7 @@ class _NewTripPageState extends State<NewTripPage> {
                       Radio<bool>(
                         value: false,
                         groupValue: _premium,
-                        onChanged: (_) {}, // premium deshabilitado por ahora
+                        onChanged: (_) {},
                         visualDensity: VisualDensity.compact,
                       ),
                       const Text('Viaje estándar'),
@@ -368,12 +436,20 @@ class _NewTripPageState extends State<NewTripPage> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text('El viaje se borrará automáticamente en:',
-                    style: Theme.of(context).textTheme.titleSmall),
+                Text(
+                  'El viaje se borrará automáticamente en:',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
                 const SizedBox(height: 4),
                 _DurationChips(
                   value: _durationHours,
-                  onChanged: (v) => setState(() => _durationHours = v),
+                  onChanged: (v) {
+                    setState(() {
+                      _durationHours = v;
+                    });
+                    // ignore: avoid_print
+                    print('[NEW TRIP] chip pulsado → $_durationHours h');
+                  },
                 ),
               ],
             ),
@@ -434,10 +510,15 @@ class _Row2 extends StatelessWidget {
   const _Row2({required this.left, required this.right});
   final Widget left;
   final Widget right;
+
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: [Expanded(child: left), const SizedBox(width: 10), Expanded(child: right)],
+      children: [
+        Expanded(child: left),
+        const SizedBox(width: 10),
+        Expanded(child: right),
+      ],
     );
   }
 }
@@ -471,6 +552,7 @@ class _DurationChips extends StatelessWidget {
         chip('6 horas', 6),
         chip('12 horas', 12),
         chip('24 horas', 24),
+        // estos quedan listos para cuando actives premium / otras reglas
         chip('3 horas', 3, enabled: false),
         chip('18 horas', 18, enabled: false),
         chip('48 horas', 48, enabled: false),
@@ -530,7 +612,9 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
     if (_items == null) return;
     final q = _textCtrl.text.trim().toLowerCase();
     setState(() {
-      _filtered = q.isEmpty ? List<String>.from(_items!) : _items!.where((e) => e.toLowerCase().contains(q)).toList();
+      _filtered = q.isEmpty
+          ? List<String>.from(_items!)
+          : _items!.where((e) => e.toLowerCase().contains(q)).toList();
     });
     _entry?.markNeedsBuild();
   }
@@ -560,7 +644,9 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
     _removeEntry();
 
     _entry = OverlayEntry(builder: (context) {
-      final maxWidth = (context.findAncestorRenderObjectOfType<RenderBox>())?.size.width ?? 320;
+      final maxWidth =
+          (context.findAncestorRenderObjectOfType<RenderBox>())?.size.width ??
+              320;
 
       return Positioned.fill(
         child: GestureDetector(
@@ -601,7 +687,10 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(12),
-          child: Text('Error: $_error', style: const TextStyle(color: Colors.red)),
+          child: Text(
+            'Error: $_error',
+            style: const TextStyle(color: Colors.red),
+          ),
         ),
       );
     }
@@ -624,7 +713,8 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
           title: Text(opt),
           onTap: () {
             _textCtrl.text = opt;
-            _textCtrl.selection = TextSelection.collapsed(offset: opt.length);
+            _textCtrl.selection =
+                TextSelection.collapsed(offset: opt.length);
             _removeEntry();
           },
         );
@@ -663,7 +753,10 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
               child: SizedBox(
                 width: 36,
                 height: 40,
-                child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: _open),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: _open,
+                ),
               ),
             ),
           ),

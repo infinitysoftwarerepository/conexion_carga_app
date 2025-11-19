@@ -478,13 +478,19 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                       final t = trips[i];
                       final isMine = t.comercialId == myId;
                       return GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => TripDetailPage(trip: t)),
+                        onTap: () async {
+                          final changed = await Navigator.of(context).push<bool>(
+                            MaterialPageRoute(builder: (_) => TripDetailPage(trip: t)),
                           );
+
+                          // si el detalle cerró con `Navigator.pop(context, true);`
+                          // volvemos a consultar los viajes del backend
+                          if (changed == true) {
+                            await _reload(); // ← tu método que ya existe y hace LoadsApi.fetchPublic...
+                          }
                         },
                         child: LoadCard(trip: t, isMine: isMine),
+
                       );
                     },
                   ),
@@ -531,10 +537,7 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // burbuja temporal “¿Dudas?”
-                  AnimatedOpacity(
-                    opacity: _showHint ? 1 : 0,
-                    duration: const Duration(milliseconds: 800),
-                    child: Container(
+                  Container(
                       decoration: BoxDecoration(
                         color: Colors.yellow.shade600,
                         borderRadius: BorderRadius.circular(24),
@@ -558,7 +561,7 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                         ],
                       ),
                     ),
-                  ),
+                  
 
                   // botón circular fijo
                   GestureDetector(

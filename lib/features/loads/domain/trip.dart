@@ -12,10 +12,14 @@ class Trip {
   final bool activo;
   final String? comercialId;
 
-  // 🔵 Opcionales
+  // Opcionales extra
   final String? comercial;
   final String? contacto;
-  final String? conductor;   // 👈 nuevo
+  final String? conductor;
+
+  // Para manejar vencimiento
+  final DateTime? createdAt;
+  final int? durationHours; // duración elegida en horas (6, 12, 24, etc.)
 
   Trip({
     required this.id,
@@ -30,8 +34,27 @@ class Trip {
     this.comercialId,
     this.comercial,
     this.contacto,
-    this.conductor, // 👈 nuevo
+    this.conductor,
+    this.createdAt,
+    this.durationHours,
   });
+
+  /// Fecha/hora exacta de vencimiento
+  DateTime? get expiresAt {
+    if (createdAt == null || durationHours == null) return null;
+    final baseUtc = createdAt!.toUtc();
+    return baseUtc.add(Duration(hours: durationHours!));
+  }
+
+  /// Tiempo que falta para vencerse a partir de *ahora*
+  Duration? get remaining {
+    final exp = expiresAt;
+    if (exp == null) return null;
+    final nowUtc = DateTime.now().toUtc();
+    final diff = exp.difference(nowUtc);
+    if (diff.isNegative) return Duration.zero;
+    return diff;
+  }
 
   factory Trip.fromJson(Map<String, dynamic> json) {
     double? _toDouble(dynamic v) {
@@ -52,6 +75,62 @@ class Trip {
       return null;
     }
 
+    DateTime? _toDateTime(dynamic v) {
+      if (v == null) return null;
+      if (v is DateTime) return v;
+      if (v is String) {
+        return DateTime.tryParse(v);
+      }
+      return null;
+    }
+
+    int? _parseDurationHours(dynamic raw) {
+      if (raw == null) return null;
+
+      if (raw is int) return raw;
+      if (raw is num) return raw.toInt();
+
+      if (raw is String) {
+        final s = raw.trim();
+        if (s.isEmpty) return null;
+
+        // Formatos posibles desde Postgres INTERVAL:
+        // "06:00:00"
+        // "1 day"
+        // "1 day 06:00:00"
+        // o directamente "6"
+        int days = 0;
+        int hours = 0;
+
+        final dayMatch = RegExp(r'(\d+)\s+day').firstMatch(s);
+        if (dayMatch != null) {
+          days = int.tryParse(dayMatch.group(1)!) ?? 0;
+        }
+
+        final timeMatch =
+            RegExp(r'(\d{1,2}):(\d{2})(?::(\d{2}))?').firstMatch(s);
+        if (timeMatch != null) {
+          hours = int.tryParse(timeMatch.group(1)!) ?? 0;
+        }
+
+        if (days == 0 && hours == 0) {
+          final asInt = int.tryParse(s);
+          if (asInt != null) return asInt;
+        }
+
+        return days * 24 + hours;
+      }
+
+      return null;
+    }
+
+    // 🔴 Aquí estaba el problema:
+    // antes: json['duration_hours'] ?? json['duracion_publicacion']
+    // Si el backend manda duration_hours=24 y duracion_publicacion='06:00:00'
+    // nos quedábamos con 24. Ahora preferimos SIEMPRE el interval.
+    final durationRaw =
+        json['duracion_publicacion'] ?? json['duration_hours'];
+
     return Trip(
       id: (json['id'] ?? json['uuid'] ?? '').toString(),
       origin: (json['origen'] ?? json['origin'] ?? '').toString(),
@@ -63,11 +142,11 @@ class Trip {
       estado: (json['estado'] ?? json['status'])?.toString(),
       activo: ((json['activo'] ?? true).toString().toLowerCase() == 'true'),
       comercialId: (json['comercial_id'] ?? json['created_by'])?.toString(),
-      // 🔵 nuevos
       comercial: (json['comercial'] ?? '').toString(),
       contacto: (json['contacto'] ?? '').toString(),
-      conductor:
-          (json['conductor'] ?? json['driver'] ?? '').toString(), // 👈 nuevo
+      conductor: (json['conductor'] ?? json['driver'] ?? '').toString(),
+      createdAt: _toDateTime(json['created_at']),
+      durationHours: _parseDurationHours(durationRaw),
     );
   }
 
@@ -82,9 +161,10 @@ class Trip {
         'estado': estado,
         'activo': activo,
         'comercial_id': comercialId,
-        // 🔵 nuevos
         'comercial': comercial,
         'contacto': contacto,
-        'conductor': conductor, // 👈 nuevo
+        'conductor': conductor,
+        'created_at': createdAt?.toIso8601String(),
+        'duration_hours': durationHours,
       };
 }

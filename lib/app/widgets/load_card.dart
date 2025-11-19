@@ -1,7 +1,9 @@
 // lib/app/widgets/load_card.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
+import 'package:conexion_carga_app/app/widgets/time_bubbles.dart';
 
 class LoadCard extends StatelessWidget {
   final Trip trip;
@@ -31,6 +33,7 @@ class LoadCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final remaining = trip.remaining;
 
     return Container(
       decoration: BoxDecoration(
@@ -47,7 +50,6 @@ class LoadCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       child: Stack(
         children: [
-          // CONTENIDO VERTICAL COMPACTO (sin riesgo de overflow)
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -62,20 +64,22 @@ class LoadCard extends StatelessWidget {
                   fontSize: 15,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
 
               // Tipo de carga
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.inventory_2_outlined, size: 16, color: Colors.black54),
+                  const Icon(Icons.inventory_2_outlined,
+                      size: 16, color: Colors.black54),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      (trip.cargoType ?? '-'),
+                      trip.cargoType,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],
@@ -86,24 +90,27 @@ class LoadCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.local_shipping_outlined, size: 16, color: Colors.black54),
+                  const Icon(Icons.local_shipping_outlined,
+                      size: 16, color: Colors.black54),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      (trip.vehicle ?? '-'),
+                      trip.vehicle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.black87),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
 
               // Tonelaje
               Row(
                 children: [
-                  const Icon(Icons.scale_outlined, size: 16, color: Colors.black54),
+                  const Icon(Icons.scale_outlined,
+                      size: 16, color: Colors.black54),
                   const SizedBox(width: 6),
                   Text(
                     _formatTons(trip.tons),
@@ -118,7 +125,8 @@ class LoadCard extends StatelessWidget {
               // Precio
               Row(
                 children: [
-                  const Icon(Icons.attach_money, size: 16, color: Colors.black54),
+                  const Icon(Icons.attach_money,
+                      size: 16, color: Colors.black54),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -131,14 +139,15 @@ class LoadCard extends StatelessWidget {
                 ],
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
 
-              // PILL “Toque aquí…” con protección contra overflow
+              // Píldora “Toque aquí…”
               Row(
                 children: [
                   Flexible(
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 6),
                       decoration: BoxDecoration(
                         color: cs.primary.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(10),
@@ -152,15 +161,14 @@ class LoadCard extends StatelessWidget {
                             color: cs.primary.withOpacity(0.85),
                           ),
                           const SizedBox(width: 6),
-                          // Elipsis para 1 línea: nunca desborda
                           Flexible(
                             child: Text(
-                              'Toque aquí para más info !',
+                              'Mas Info Aquí!',
                               maxLines: 1,
                               softWrap: false,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: cs.primary.withOpacity(0.90),
                                 letterSpacing: .1,
@@ -173,10 +181,15 @@ class LoadCard extends StatelessWidget {
                   ),
                 ],
               ),
+
+              // Burbujas de tiempo (abajo, sin overflow)
+              if (remaining != null && remaining > Duration.zero) ...[
+                const SizedBox(height: 4),
+                TimeBubbleRowSmall(remaining: remaining),
+              ],
             ],
           ),
 
-          // Badge “mi viaje”
           if (isMine)
             Positioned(
               right: 0,

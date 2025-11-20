@@ -1,4 +1,5 @@
 // lib/features/loads/presentation/pages/start_page.dart
+
 import 'dart:async';
 import 'dart:math';
 
@@ -24,6 +25,7 @@ import 'package:conexion_carga_app/features/loads/presentation/pages/trip_detail
 import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
+import 'package:conexion_carga_app/app/theme/theme_conection.dart' show AppColors;
 
 const _adImage = 'assets/images/ad_start_full.png';
 const _whatsappIcon = 'assets/icons/whatsapp.png';
@@ -48,6 +50,7 @@ class _StartPageState extends State<StartPage> {
   static const double kMaxPrice = 100_000_000;
 
   final GlobalKey _profileKey = GlobalKey();
+
   List<Trip> _publicTrips = const <Trip>[];
 
   // búsqueda + filtros
@@ -74,32 +77,36 @@ class _StartPageState extends State<StartPage> {
   }
 
   void _startAdSequence() {
-    // mostrar publicidad 5 s → desaparecer lentamente
+    // Secuencia:
+    // 1) Mostrar publicidad 5 s
+    // 2) Ocultar publicidad
+    // 3) Mostrar burbuja “¿Dudas?” 5 s
+    // 4) Ocultar burbuja
     Timer(const Duration(seconds: 5), () {
       if (!mounted) return;
       setState(() => _showAd = false);
 
-      // mostrar burbuja de dudas durante 5 s
+      setState(() => _showHint = true);
       Timer(const Duration(seconds: 5), () {
         if (!mounted) return;
         setState(() => _showHint = false);
       });
-      setState(() => _showHint = true);
     });
   }
 
   Future<void> _openWhatsApp() async {
     const phone = '+573207259517';
-
     const message = '''
-Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación entre las partes y no asume responsabilidad alguna por la negociación o cumplimiento de los acuerdos. Puedo reportar irregularidades al correo electrónico: conexioncarga@gmail.com
+ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación entre las partes y no asume responsabilidad alguna por la negociación o cumplimiento de los acuerdos. Puedo reportar irregularidades al correo electrónico: conexioncarga@gmail.com 
 ''';
 
     final encodedMessage = Uri.encodeComponent(message);
-    final Uri url =
-        Uri.parse('https://wa.me/${phone.replaceAll('+', '')}?text=$encodedMessage');
+    final Uri url = Uri.parse(
+      'https://wa.me/${phone.replaceAll('+', '')}?text=$encodedMessage',
+    );
 
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No se pudo abrir WhatsApp')),
       );
@@ -107,7 +114,6 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
   }
 
   // ------------------- BÚSQUEDA -------------------
-
   void _openSearchSheet() {
     final controller = TextEditingController(text: _searchQuery);
 
@@ -125,7 +131,10 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
             children: [
               const Text(
                 'Buscar viajes',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -170,7 +179,6 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
   }
 
   // ------------------- FILTROS -------------------
-
   void _openFiltersSheet() {
     if (_publicTrips.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -194,7 +202,6 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
     // ▶️ Rangos fijos pedidos
     const double tonsMin = kMinTons;
     const double tonsMax = kMaxTons;
-
     const double priceMin = kMinPrice;
     const double priceMax = kMaxPrice;
 
@@ -218,7 +225,6 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
               local.minTons ?? tonsMin,
               local.maxTons ?? tonsMax,
             );
-
             final priceRange = RangeValues(
               (local.minPrice ?? priceMin).toDouble(),
               (local.maxPrice ?? priceMax).toDouble(),
@@ -233,12 +239,13 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                   children: [
                     const Text(
                       'Filtros',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    // textos
                     _FilterTextField(
                       label: 'Origen',
                       initialValue: local.origin,
@@ -294,7 +301,9 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                       const Text(
                         'Peso (Toneladas)',
                         style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       RangeSlider(
                         values: tonsRange,
@@ -320,7 +329,9 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                       const Text(
                         'Valor del viaje (millones de pesos)',
                         style: TextStyle(
-                            fontSize: 13, fontWeight: FontWeight.w600),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       RangeSlider(
                         values: priceRange,
@@ -397,7 +408,6 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
       if (!containsIgnore(t.estado, _filters.estado)) return false;
       if (!containsIgnore(t.comercial, _filters.comercial)) return false;
       if (!containsIgnore(t.contacto, _filters.contacto)) return false;
-      // 👇 nuevo filtro por conductor
       if (!containsIgnore(t.conductor, _filters.conductor)) return false;
 
       // rangos numéricos
@@ -407,7 +417,6 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
       if (_filters.maxTons != null) {
         if (t.tons == null || t.tons! > _filters.maxTons!) return false;
       }
-
       if (_filters.minPrice != null) {
         final v = t.price;
         if (v == null || v < _filters.minPrice!) return false;
@@ -450,6 +459,8 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
   Widget build(BuildContext context) {
     final myId = AuthSession.instance.user.value?.id ?? '';
     final trips = _applyFiltersTo(_publicTrips);
+    final appColors =
+        Theme.of(context).extension<AppColors>() ?? AppColors.light();
 
     return Scaffold(
       appBar: _buildAppBar(),
@@ -464,8 +475,7 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                   onRefresh: _reload,
                   child: GridView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding:
-                        const EdgeInsets.fromLTRB(12, 0, 12, _footerGap),
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, _footerGap),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
@@ -477,20 +487,23 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                     itemBuilder: (ctx, i) {
                       final t = trips[i];
                       final isMine = t.comercialId == myId;
+
                       return GestureDetector(
                         onTap: () async {
-                          final changed = await Navigator.of(context).push<bool>(
-                            MaterialPageRoute(builder: (_) => TripDetailPage(trip: t)),
+                          final changed =
+                              await Navigator.of(context).push<bool>(
+                            MaterialPageRoute(
+                              builder: (_) => TripDetailPage(trip: t),
+                            ),
                           );
 
-                          // si el detalle cerró con `Navigator.pop(context, true);`
+                          // si el detalle cerró con Navigator.pop(context, true);
                           // volvemos a consultar los viajes del backend
                           if (changed == true) {
-                            await _reload(); // ← tu método que ya existe y hace LoadsApi.fetchPublic...
+                            await _reload();
                           }
                         },
                         child: LoadCard(trip: t, isMine: isMine),
-
                       );
                     },
                   ),
@@ -507,8 +520,9 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
             child: Material(
               elevation: 12,
               color: Theme.of(context).scaffoldBackgroundColor,
-              child:
-                  const BottomBannerSection(donationNumber: '008-168-23331'),
+              child: const BottomBannerSection(
+                donationNumber: '008-168-23331',
+              ),
             ),
           ),
 
@@ -537,9 +551,10 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // burbuja temporal “¿Dudas?”
-                  Container(
+                  if (_showHint)
+                    Container(
                       decoration: BoxDecoration(
-                        color: Colors.yellow.shade600,
+                        color: appColors.helpBubbleBg,
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
@@ -550,18 +565,20 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                         ],
                       ),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       margin: const EdgeInsets.only(bottom: 6),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('¿Dudas ?',
-                              style:
-                                  TextStyle(fontWeight: FontWeight.w700)),
+                          Text(
+                            '¿Dudas ?',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ],
                       ),
                     ),
-                  
 
                   // botón circular fijo
                   GestureDetector(
@@ -582,8 +599,10 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(8),
-                        child: Image.asset(_whatsappIcon,
-                            fit: BoxFit.contain),
+                        child: Image.asset(
+                          _whatsappIcon,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),
@@ -611,8 +630,9 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
             child: IconTheme(
               data: const IconThemeData(size: 16),
               child: MediaQuery(
-                data: MediaQuery.of(context)
-                    .copyWith(textScaler: const TextScaler.linear(0.90)),
+                data: MediaQuery.of(context).copyWith(
+                  textScaler: const TextScaler.linear(0.90),
+                ),
                 child: btn,
               ),
             ),
@@ -656,7 +676,8 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                          builder: (_) => const RegistrationFormPage()),
+                        builder: (_) => const RegistrationFormPage(),
+                      ),
                     );
                   },
                 ),
@@ -697,8 +718,7 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                 foregroundColor: fg,
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const MyLoadsPage()),
+                    MaterialPageRoute(builder: (_) => const MyLoadsPage()),
                   );
                 },
               ),
@@ -714,8 +734,7 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                 foregroundColor: Colors.white,
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const PointsPage()),
+                    MaterialPageRoute(builder: (_) => const PointsPage()),
                   );
                 },
               ),
@@ -743,9 +762,10 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
       title: ValueListenableBuilder<AuthUser?>(
         valueListenable: AuthSession.instance.user,
         builder: (_, user, __) {
-          final subtitle = (user != null && user.firstName.trim().isNotEmpty)
-              ? 'Bienvenido ${user.firstName}'
-              : widget.userName;
+          final subtitle =
+              (user != null && user.firstName.trim().isNotEmpty)
+                  ? 'Bienvenido ${user.firstName}'
+                  : widget.userName;
           return FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -784,6 +804,7 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
   Future<void> _openProfileMenu() async {
     final ro = _profileKey.currentContext?.findRenderObject();
     if (ro is! RenderBox) return;
+
     final topLeft = ro.localToGlobal(Offset.zero);
     final size = ro.size;
     final position = RelativeRect.fromLTRB(
@@ -796,7 +817,6 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
     final isLight = Theme.of(context).brightness == Brightness.light;
     final bg = isLight ? kGreenStrong : kDeepDarkGreen;
     final fg = isLight ? Colors.white : kGreyText;
-
     final user = AuthSession.instance.user.value;
 
     await showMenu<void>(
@@ -837,7 +857,8 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
                 Navigator.pop(context);
                 AuthSession.instance.signOut();
                 ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Sesión cerrada.')));
+                  const SnackBar(content: Text('Sesión cerrada.')),
+                );
                 _reload();
               },
             ),
@@ -849,7 +870,6 @@ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación 
 }
 
 // ===================== Clases auxiliares =====================
-
 class _TripFilters {
   String origin;
   String destination;
@@ -859,7 +879,6 @@ class _TripFilters {
   String comercial;
   String contacto;
   String conductor;
-
   double? minTons;
   double? maxTons;
   num? minPrice;

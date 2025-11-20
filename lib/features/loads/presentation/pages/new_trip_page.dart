@@ -1,5 +1,5 @@
-// lib/features/loads/presentation/pages/new_trip_page.dart
 import 'dart:convert' as convert;
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -7,12 +7,16 @@ import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 import 'package:conexion_carga_app/app/widgets/inputs/app_text_field.dart';
 import 'package:conexion_carga_app/app/widgets/inputs/app_multiline_field.dart';
-
 import 'package:conexion_carga_app/core/env.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
+import 'package:conexion_carga_app/features/loads/domain/trip.dart'; // 👈 nuevo
 
 class NewTripPage extends StatefulWidget {
-  const NewTripPage({super.key});
+  /// Cuando se pasa un trip, la pantalla se usa como “Reutilizar viaje”
+  final Trip? initialTrip;
+
+  const NewTripPage({super.key, this.initialTrip});
+
   @override
   State<NewTripPage> createState() => _NewTripPageState();
 }
@@ -32,7 +36,7 @@ class _NewTripPageState extends State<NewTripPage> {
 
   bool _premium = false;
 
-  /// Valor que se envía al backend en `duration_hours`
+  /// Valor que se envía al backend en duration_hours
   /// 6 por defecto para que el primer chip ya quede seleccionado.
   int _durationHours = 6;
 
@@ -42,13 +46,48 @@ class _NewTripPageState extends State<NewTripPage> {
   @override
   void initState() {
     super.initState();
-    final u = AuthSession.instance.user.value;
 
+    // Nombre del comercial por defecto = usuario autenticado
+    final u = AuthSession.instance.user.value;
     final fullName = [
       (u?.firstName ?? '').trim(),
       (u?.lastName ?? '').trim(),
     ].where((s) => s.isNotEmpty).join(' ');
     _comercialCtrl.text = fullName;
+
+    // 👇 Si venimos desde "Reutilizar", precargamos los datos del viaje
+    final t = widget.initialTrip;
+    if (t != null) {
+      _origenCtrl.text = t.origin;
+      _destinoCtrl.text = t.destination;
+      _tipoCargaCtrl.text = t.cargoType;
+      if (t.tons != null) {
+        final d = t.tons!.toDouble();
+        _pesoCtrl.text = d == d.truncateToDouble()
+            ? d.toStringAsFixed(0)
+            : d.toStringAsFixed(1);
+      }
+      if (t.price != null) {
+        _valorCtrl.text = t.price!.toStringAsFixed(0);
+      }
+
+      // Comercial / contacto del viaje original si existen
+      if ((t.comercial ?? '').trim().isNotEmpty) {
+        _comercialCtrl.text = t.comercial!;
+      }
+      if ((t.contacto ?? '').trim().isNotEmpty) {
+        _contactoCtrl.text = t.contacto!;
+      }
+      if ((t.conductor ?? '').trim().isNotEmpty) {
+        _conductorCtrl.text = t.conductor!;
+      }
+
+      _tipoVehiculoCtrl.text = t.vehicle;
+
+      if (t.durationHours != null) {
+        _durationHours = t.durationHours!;
+      }
+    }
   }
 
   @override
@@ -81,6 +120,7 @@ class _NewTripPageState extends State<NewTripPage> {
     'Villavicencio',
     'Santa Marta'
   ];
+
   static const _fallbackTiposCarga = <String>[
     'Granel sólido',
     'Granel líquido',
@@ -92,6 +132,7 @@ class _NewTripPageState extends State<NewTripPage> {
     'Perecedera',
     'Material de construcción'
   ];
+
   static const _fallbackTiposVehiculo = <String>[
     'Tracto',
     'Sencillo',
@@ -121,10 +162,13 @@ class _NewTripPageState extends State<NewTripPage> {
     print('[CAT] GET $uri');
 
     try {
-      final res = await http.get(uri, headers: {
-        'Accept': 'application/json',
-        if (tok.isNotEmpty) 'Authorization': 'Bearer $tok',
-      });
+      final res = await http.get(
+        uri,
+        headers: {
+          'Accept': 'application/json',
+          if (tok.isNotEmpty) 'Authorization': 'Bearer $tok',
+        },
+      );
 
       if (res.statusCode != 200) {
         throw Exception('HTTP ${res.statusCode}');
@@ -138,6 +182,7 @@ class _NewTripPageState extends State<NewTripPage> {
       }
 
       List<dynamic> list = const [];
+
       if (json is List) {
         list = json;
       } else if (json is Map) {
@@ -190,6 +235,7 @@ class _NewTripPageState extends State<NewTripPage> {
 
       // ignore: avoid_print
       print('[CAT] 200 $endpoint → ${result.length} items');
+
       return result;
     } catch (e) {
       final fb = _fallbackFor(endpoint);
@@ -215,7 +261,6 @@ class _NewTripPageState extends State<NewTripPage> {
       return;
     }
 
-    // DEBUG: para que veas en consola qué valor se va a enviar
     // ignore: avoid_print
     print('[NEW TRIP] duration_hours seleccionado = $_durationHours');
 
@@ -227,23 +272,22 @@ class _NewTripPageState extends State<NewTripPage> {
       "origen": _origenCtrl.text.trim(),
       "destino": _destinoCtrl.text.trim(),
       "tipo_carga": _tipoCargaCtrl.text.trim(),
-      "peso": double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
-      "valor":
-          int.tryParse(_valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ??
-              0,
-      "conductor": _conductorCtrl.text.trim().isEmpty
-          ? null
-          : _conductorCtrl.text.trim(),
+      "peso":
+          double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
+      "valor": int.tryParse(
+              _valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ??
+          0,
+      "conductor":
+          _conductorCtrl.text.trim().isEmpty ? null : _conductorCtrl.text.trim(),
       "tipo_vehiculo": _tipoVehiculoCtrl.text.trim().isEmpty
           ? null
           : _tipoVehiculoCtrl.text.trim(),
-      "observaciones":
-          _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
-
-      // 👇 AQUÍ se manda EXACTAMENTE el valor del chip seleccionado
+      "observaciones": _obsCtrl.text.trim().isEmpty
+          ? null
+          : _obsCtrl.text.trim(),
+      // 👇 se envía tal cual está el chip elegido
       "duration_hours": _durationHours,
       "premium_trip": _premium,
-
       "comercial": _comercialCtrl.text.trim(),
       "contacto": _contactoCtrl.text.trim(),
     };
@@ -265,17 +309,19 @@ class _NewTripPageState extends State<NewTripPage> {
         String msg = 'No se pudo registrar el viaje (${res.statusCode}).';
         try {
           final m = convert.jsonDecode(res.body);
-          if (m is Map && m['detail'] != null) msg = m['detail'].toString();
+          if (m is Map && m['detail'] != null) {
+            msg = m['detail'].toString();
+          }
         } catch (_) {}
         throw Exception(msg);
       }
 
       if (!mounted) return;
+
       final me = AuthSession.instance.user.value;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('Viaje registrado para ${me?.firstName ?? 'ti'}'),
+          content: Text('Viaje registrado para ${me?.firstName ?? 'ti'}'),
         ),
       );
       Navigator.of(context).pop(true);
@@ -456,6 +502,7 @@ class _NewTripPageState extends State<NewTripPage> {
           ),
 
           const SizedBox(height: 8),
+
           Row(
             children: [
               Expanded(
@@ -508,6 +555,7 @@ class _NewTripPageState extends State<NewTripPage> {
 /* -------------------- fila 2 columnas -------------------- */
 class _Row2 extends StatelessWidget {
   const _Row2({required this.left, required this.right});
+
   final Widget left;
   final Widget right;
 
@@ -526,6 +574,7 @@ class _Row2 extends StatelessWidget {
 /* -------------------- chips duración -------------------- */
 class _DurationChips extends StatelessWidget {
   const _DurationChips({required this.value, required this.onChanged});
+
   final int value;
   final ValueChanged<int> onChanged;
 
@@ -552,7 +601,6 @@ class _DurationChips extends StatelessWidget {
         chip('6 horas', 6),
         chip('12 horas', 12),
         chip('24 horas', 24),
-        // estos quedan listos para cuando actives premium / otras reglas
         chip('3 horas', 3, enabled: false),
         chip('18 horas', 18, enabled: false),
         chip('48 horas', 48, enabled: false),
@@ -560,6 +608,10 @@ class _DurationChips extends StatelessWidget {
     );
   }
 }
+
+/* -------------------- dropdown en cascada -------------------- */
+// (se mantiene igual, no lo toqué)
+
 
 /* -------------------- dropdown en cascada -------------------- */
 class DropdownCatalogField extends StatefulWidget {

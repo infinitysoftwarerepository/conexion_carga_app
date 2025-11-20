@@ -1,8 +1,10 @@
+// lib/main.dart
+
 import 'package:flutter/material.dart';
 
-import 'package:conexion_carga_app/core/auth_session.dart'; // <-- importa
+import 'package:conexion_carga_app/core/auth_session.dart';
 
-/// 🎨 Tema central
+/// 🎨 Tema central (colores corporativos)
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 
 /// 🌗 Controlador + widget del toggle (claro/oscuro)
@@ -11,9 +13,12 @@ import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 /// 🏠 Pantalla inicial
 import 'package:conexion_carga_app/features/loads/presentation/pages/start_page.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AuthSession.instance.hydrate();// <-- añade esto
+
+  // Hidrata la sesión desde storage local (token, user, etc.)
+  await AuthSession.instance.hydrate();
+
   runApp(const Bootstrap());
 }
 
@@ -33,12 +38,14 @@ class Bootstrap extends StatelessWidget {
           title: 'CONEXIÓN CARGA',
           debugShowCheckedModeBanner: false,
 
+          // Tema claro / oscuro con tu paleta
           theme: AppTheme(selectedSeed: 0).theme(),
           darkTheme: AppTheme(selectedSeed: 0).darkTheme(),
           themeMode: mode,
 
-          // 👇 StartPage ahora reacciona sola a la sesión (no hace falta pasar nombre)
-          home: const StartPage(userName: 'Inicie sesión o registrese'),
+          // StartPage se conecta sola a AuthSession, el parámetro
+          // userName es solo un texto de fallback.
+          home: const StartPage(userName: '◄ Inicie sesión o registresé'),
         );
       },
     );

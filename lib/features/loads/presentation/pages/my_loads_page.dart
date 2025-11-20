@@ -29,6 +29,7 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
   // búsqueda + filtros
   String _searchQuery = '';
   _TripFilters _filters = _TripFilters();
+
   List<Trip> _lastItems = const <Trip>[];
 
   @override
@@ -44,7 +45,6 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
   }
 
   // ------------------- BÚSQUEDA -------------------
-
   void _openSearchSheet() {
     final controller = TextEditingController(text: _searchQuery);
 
@@ -107,7 +107,6 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
   }
 
   // ------------------- FILTROS -------------------
-
   void _openFiltersSheet() {
     if (_lastItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -130,7 +129,6 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
     // ▶️ Rangos fijos pedidos
     const double tonsMin = kMinTons;
     const double tonsMax = kMaxTons;
-
     const double priceMin = kMinPrice;
     const double priceMax = kMaxPrice;
 
@@ -142,14 +140,12 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
       showDragHandle: true,
       builder: (ctx) {
         final bottom = MediaQuery.of(ctx).viewInsets.bottom;
-
         return StatefulBuilder(
           builder: (ctx, setModalState) {
             final tonsRange = RangeValues(
               local.minTons ?? tonsMin,
               local.maxTons ?? tonsMax,
             );
-
             final priceRange = RangeValues(
               (local.minPrice ?? priceMin).toDouble(),
               (local.maxPrice ?? priceMax).toDouble(),
@@ -170,6 +166,7 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
                           TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 12),
+
                     _FilterTextField(
                       label: 'Origen',
                       initialValue: local.origin,
@@ -212,6 +209,7 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
                       onChanged: (v) =>
                           setModalState(() => local.contacto = v.trim()),
                     ),
+
                     const SizedBox(height: 8),
 
                     if (tonsValues.isNotEmpty) ...[
@@ -264,6 +262,7 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
                     ],
 
                     const SizedBox(height: 8),
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -359,6 +358,16 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
     }).toList();
   }
 
+  /// 👉 Regla única para saber si un trip está vencido:
+  /// - si `activo == false` → vencido
+  /// - o si tiene `remaining` y es <= 0 → vencido
+  bool _isExpired(Trip t) {
+    if (!t.activo) return true;
+    final rem = t.remaining;
+    if (rem == null) return false; // viajes antiguos sin duración
+    return rem <= Duration.zero;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -394,22 +403,35 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
           }
 
           final filtered = _applyFiltersTo(items);
+
           if (filtered.isEmpty) {
             return const Center(
-              child: Text('No hay viajes que coincidan con la búsqueda o filtros.'),
+              child: Text(
+                'No hay viajes que coincidan con la búsqueda o filtros.',
+              ),
             );
           }
 
           final myId = AuthSession.instance.user.value?.id ?? '';
 
+          // 🔽 Activos primero, vencidos de últimos
+          final sorted = List<Trip>.from(filtered)
+            ..sort((a, b) {
+              final ea = _isExpired(a);
+              final eb = _isExpired(b);
+              if (ea == eb) return 0;
+              return ea ? 1 : -1; // true (vencido) va después
+            });
+
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: filtered.length,
+              itemCount: sorted.length,
               itemBuilder: (_, i) {
-                final t = filtered[i];
+                final t = sorted[i];
                 final isMine = (t.comercialId ?? '') == myId;
+                final expired = _isExpired(t);
 
                 return Padding(
                   padding:
@@ -420,7 +442,8 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
                       await Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => TripDetailPage(trip: t)),
+                          builder: (_) => TripDetailPage(trip: t),
+                        ),
                       );
                       // refrescar al volver (por si se eliminó o editó)
                       await _refresh();
@@ -428,6 +451,7 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
                     child: LoadCard(
                       trip: t,
                       isMine: isMine,
+                      isExpired: expired, // 👈 aquí marcamos las vencidas
                     ),
                   ),
                 );

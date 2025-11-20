@@ -11,7 +11,9 @@ import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
 import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
 import 'package:conexion_carga_app/app/widgets/time_bubbles.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/new_trip_page.dart'; // 👈 nuevo
 
+/// Formateador de dinero en COP
 final _money = NumberFormat.simpleCurrency(locale: 'es_CO', name: 'COP');
 
 class TripDetailPage extends StatefulWidget {
@@ -23,8 +25,10 @@ class TripDetailPage extends StatefulWidget {
 }
 
 class _TripDetailPageState extends State<TripDetailPage> {
+  /// Detalle crudo desde el backend (para exportar / campos extra)
   late Future<Map<String, dynamic>> _future;
 
+  /// Tiempo restante que vamos actualizando cada segundo
   Duration? _remaining;
   Timer? _timer;
 
@@ -41,6 +45,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
     super.dispose();
   }
 
+  /// Recalcula el tiempo restante a partir del Trip
   void _updateRemaining() {
     final rem = widget.trip.remaining;
     if (!mounted) return;
@@ -49,6 +54,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
     });
   }
 
+  /// Arranca el timer de 1 seg para ir actualizando la cuenta regresiva
   void _startTimer() {
     _timer?.cancel();
 
@@ -108,6 +114,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
             return fallback;
           }
 
+          // ------------ Valores de detalle (con fallback al Trip) ------------
           final origen        = s('origen',        fallback: trip.origin);
           final destino       = s('destino',       fallback: trip.destination);
           final pesoNum       = n('peso',          fallback: trip.tons);
@@ -119,27 +126,42 @@ class _TripDetailPageState extends State<TripDetailPage> {
           final comercial     = s('comercial',     fallback: trip.comercial ?? '');
           final contacto      = s('contacto',      fallback: trip.contacto ?? '');
 
+          // ------------ ¿El viaje es mío? (para botones de abajo) ------------
           final myUserId  = AuthSession.instance.user.value?.id ?? '';
           final creadorId = s('comercial_id', fallback: trip.comercialId ?? '');
           final isMine    = creadorId == myUserId;
 
+          // ------------ Lógica de vencimiento / eliminado ------------
           final Duration? rem = _remaining ?? trip.remaining;
+
+          bool _fromRawActivo() {
+            final v = raw['activo'];
+            if (v == null) return trip.activo;
+            if (v is bool) return v;
+            return v.toString().toLowerCase() == 'true';
+          }
+
+          final bool isActiveBackend = _fromRawActivo();
+          final bool isExpired =
+              !isActiveBackend || rem == null || rem <= Duration.zero;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // --------- Título Origen → Destino ----------
                 Text(
                   '$origen → $destino',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
 
-                if (rem != null && rem > Duration.zero) ...[
-                  const SizedBox(height: 10),
-                  TimeBubbleRowBig(remaining: rem),
-                ] else if (rem != null && rem <= Duration.zero) ...[
-                  const SizedBox(height: 8),
+                const SizedBox(height: 10),
+
+                // --------- Burbujas de tiempo o aviso vencido ----------
+                if (!isExpired && rem != null) ...[
+                  TimeBubbleRowSmall(remaining: rem),
+                ] else ...[
                   Text(
                     'Este viaje ya está vencido.',
                     style: TextStyle(
@@ -151,6 +173,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
 
                 const SizedBox(height: 12),
 
+                // --------- Detalle de campos ----------
                 _row('Peso',            (pesoNum != null) ? _fmtTons(pesoNum) : '-'),
                 _row('Tipo de carga',    tipoCarga.isEmpty ? '-' : tipoCarga),
                 _row('Tipo de vehículo', tipoVehiculo.isEmpty ? '-' : tipoVehiculo),
@@ -162,6 +185,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
 
                 const SizedBox(height: 20),
 
+                // --------- Aviso legal ----------
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
@@ -187,6 +211,10 @@ class _TripDetailPageState extends State<TripDetailPage> {
           );
         },
       ),
+
+      // --------------------------------------------------------------------
+      // BARRA INFERIOR: Contactar / Exportar / Eliminar o Reutilizar
+      // --------------------------------------------------------------------
       bottomNavigationBar: FutureBuilder<Map<String, dynamic>>(
         future: _future,
         builder: (context, snap) {
@@ -206,6 +234,19 @@ class _TripDetailPageState extends State<TripDetailPage> {
           final creadorId = s('comercial_id', fallback: trip.comercialId ?? '');
           final isMine    = creadorId == myUserId;
           final contacto  = s('contacto',      fallback: trip.contacto ?? '');
+
+          // 🔁 Reusamos la lógica de vencido también aquí
+          final Duration? rem = _remaining ?? trip.remaining;
+          bool _fromRawActivo() {
+            final v = raw['activo'];
+            if (v == null) return trip.activo;
+            if (v is bool) return v;
+            return v.toString().toLowerCase() == 'true';
+          }
+
+          final bool isActiveBackend = _fromRawActivo();
+          final bool isExpired =
+              !isActiveBackend || rem == null || rem <= Duration.zero;
 
           Widget wppIcon() => Padding(
                 padding: const EdgeInsets.only(right: 6),
@@ -255,30 +296,51 @@ class _TripDetailPageState extends State<TripDetailPage> {
                           ),
                         ),
                         const SizedBox(width: 10),
+
+                        // 👉 Si el viaje está vencido: botón "Reutilizar"
+                        //    Si sigue activo: botón "Eliminar" como antes
                         Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.delete_forever_outlined),
-                            label: const Text('Eliminar'),
-                            onPressed: () async {
-                              try {
-                                await LoadsApi.expire(trip.id);
-                                if (!mounted) return;
-                                Navigator.pop(context, true);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Viaje eliminado.'),
-                                  ),
-                                );
-                              } catch (e) {
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Error al eliminar: $e'),
-                                  ),
-                                );
-                              }
-                            },
-                          ),
+                          child: isExpired
+                              ? OutlinedButton.icon(
+                                  icon: const Icon(Icons.recycling),
+                                  label: const Text('Reutilizar'),
+                                  onPressed: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            NewTripPage(initialTrip: trip),
+                                      ),
+                                    );
+                                  },
+                                )
+                              : OutlinedButton.icon(
+                                  icon: const Icon(
+                                      Icons.delete_forever_outlined),
+                                  label: const Text('Eliminar'),
+                                  onPressed: () async {
+                                    try {
+                                      await LoadsApi.expire(trip.id);
+                                      if (!mounted) return;
+                                      Navigator.pop(context, true);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Viaje eliminado.'),
+                                        ),
+                                      );
+                                    } catch (e) {
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content:
+                                              Text('Error al eliminar: $e'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
                         ),
                       ],
                     )
@@ -310,6 +372,9 @@ class _TripDetailPageState extends State<TripDetailPage> {
     );
   }
 
+  // --------------------------------------------------------------------------
+  // Helpers de UI
+  // --------------------------------------------------------------------------
   Widget _row(String label, String value) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Row(
@@ -341,6 +406,9 @@ class _TripDetailPageState extends State<TripDetailPage> {
   String _fmtMoney(num v) =>
       _money.format(v).replaceAll(',00', '');
 
+  // --------------------------------------------------------------------------
+  // WhatsApp + exportar
+  // --------------------------------------------------------------------------
   Future<void> _openWhatsApp(BuildContext context, String phoneRaw) async {
     final digits = phoneRaw.replaceAll(RegExp(r'[^0-9+]'), '');
     if (digits.isEmpty) {
@@ -417,3 +485,4 @@ class _TripDetailPageState extends State<TripDetailPage> {
     );
   }
 }
+

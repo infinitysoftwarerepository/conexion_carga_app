@@ -1,4 +1,3 @@
-// lib/app/widgets/load_card.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -9,10 +8,15 @@ class LoadCard extends StatelessWidget {
   final Trip trip;
   final bool isMine;
 
+  /// 👇 Nuevo flag: solo lo usamos desde MyLoadsPage
+  /// para dibujar la tarjeta “apagada / vencida”.
+  final bool isExpired;
+
   const LoadCard({
     super.key,
     required this.trip,
     this.isMine = false,
+    this.isExpired = false, // por defecto NO vencida (StartPage no se toca)
   });
 
   String _formatTons(num? t) {
@@ -35,9 +39,35 @@ class LoadCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final remaining = trip.remaining;
 
+    // 🎨 Si está vencida: la tarjeta se ve más “apagada”
+    final Color cardColor = isExpired
+        ? cs.surface.withOpacity(0.60)
+        : cs.surface;
+
+    // Etiqueta rápida “Vencido”
+    Widget? expiredBadge;
+    if (isExpired) {
+      expiredBadge = Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: cs.error.withOpacity(0.10),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: cs.error.withOpacity(0.4)),
+        ),
+        child: Text(
+          'Viaje vencido',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: cs.error,
+          ),
+        ),
+      );
+    }
+
     return Container(
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: cardColor,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -54,15 +84,26 @@ class LoadCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Origen → Destino
-              Text(
-                '${trip.origin} → ${trip.destination}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
+              // Origen → Destino + badge de vencido
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${trip.origin} → ${trip.destination}',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                  if (expiredBadge != null) ...[
+                    const SizedBox(width: 6),
+                    expiredBadge,
+                  ],
+                ],
               ),
               const SizedBox(height: 4),
 
@@ -70,8 +111,11 @@ class LoadCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.inventory_2_outlined,
-                      size: 16, color: Colors.black54),
+                  const Icon(
+                    Icons.inventory_2_outlined,
+                    size: 16,
+                    color: Colors.black54,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -79,7 +123,9 @@ class LoadCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontSize: 13, color: Colors.black87),
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
                 ],
@@ -90,8 +136,11 @@ class LoadCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.local_shipping_outlined,
-                      size: 16, color: Colors.black54),
+                  const Icon(
+                    Icons.local_shipping_outlined,
+                    size: 16,
+                    color: Colors.black54,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -99,7 +148,9 @@ class LoadCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontSize: 13, color: Colors.black87),
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
                 ],
@@ -109,8 +160,11 @@ class LoadCard extends StatelessWidget {
               // Tonelaje
               Row(
                 children: [
-                  const Icon(Icons.scale_outlined,
-                      size: 16, color: Colors.black54),
+                  const Icon(
+                    Icons.scale_outlined,
+                    size: 16,
+                    color: Colors.black54,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     _formatTons(trip.tons),
@@ -125,20 +179,24 @@ class LoadCard extends StatelessWidget {
               // Precio
               Row(
                 children: [
-                  const Icon(Icons.attach_money,
-                      size: 16, color: Colors.black54),
+                  const Icon(
+                    Icons.attach_money,
+                    size: 16,
+                    color: Colors.black54,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       _formatMoney(trip.price),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
               ),
-
               const SizedBox(height: 6),
 
               // Píldora “Toque aquí…”
@@ -147,7 +205,9 @@ class LoadCard extends StatelessWidget {
                   Flexible(
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 6),
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: cs.primary.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(10),
@@ -182,14 +242,17 @@ class LoadCard extends StatelessWidget {
                 ],
               ),
 
-              // Burbujas de tiempo (abajo, sin overflow)
-              if (remaining != null && remaining > Duration.zero) ...[
+              // Burbujas de tiempo: solo si NO está marcada como vencida
+              if (!isExpired &&
+                  remaining != null &&
+                  remaining > Duration.zero) ...[
                 const SizedBox(height: 4),
                 TimeBubbleRowSmall(remaining: remaining),
               ],
             ],
           ),
 
+          // Indicador de que el viaje es mío
           if (isMine)
             Positioned(
               right: 0,
@@ -208,7 +271,11 @@ class LoadCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.person, size: 16, color: Colors.white),
+                child: const Icon(
+                  Icons.person,
+                  size: 16,
+                  color: Colors.white,
+                ),
               ),
             ),
         ],

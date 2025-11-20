@@ -1,4 +1,5 @@
 // lib/features/loads/data/loads_api.dart
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -7,6 +8,7 @@ import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
 
 class LoadsApi {
+  // 👇 SIEMPRE usa Env.baseUrl, no quemes URLs aquí.
   static String get _base => Env.baseUrl;
 
   static Map<String, String> _headers() {
@@ -29,14 +31,19 @@ class LoadsApi {
     }
 
     final body = jsonDecode(res.body);
+
     if (body is List) {
-      return body.map((e) => Trip.fromJson(Map<String, dynamic>.from(e))).toList();
+      return body
+          .map((e) => Trip.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
     }
+
     if (body is Map && body['items'] is List) {
       return (body['items'] as List)
           .map((e) => Trip.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     }
+
     return <Trip>[];
   }
 
@@ -52,14 +59,19 @@ class LoadsApi {
     }
 
     final body = jsonDecode(res.body);
+
     if (body is List) {
-      return body.map((e) => Trip.fromJson(Map<String, dynamic>.from(e))).toList();
+      return body
+          .map((e) => Trip.fromJson(Map<String, dynamic>.from(e)))
+          .toList();
     }
+
     if (body is Map && body['items'] is List) {
       return (body['items'] as List)
           .map((e) => Trip.fromJson(Map<String, dynamic>.from(e)))
           .toList();
     }
+
     return <Trip>[];
   }
 
@@ -75,15 +87,18 @@ class LoadsApi {
     }
 
     final body = jsonDecode(res.body);
+
     if (body is Map<String, dynamic>) return Map<String, dynamic>.from(body);
     if (body is Map) return Map<String, dynamic>.from(body);
+
     return <String, dynamic>{};
   }
 
   // ─────────────────────────────────────────────────────────
-  // CREAR VIAJE
+  // CREAR VIAJE (útil si quieres usarlo desde otro sitio)
   // ─────────────────────────────────────────────────────────
-  static Future<Map<String, dynamic>> create(Map<String, dynamic> body) async {
+  static Future<Map<String, dynamic>> create(
+      Map<String, dynamic> body) async {
     final uri = Uri.parse('$_base/api/loads');
     final res = await http.post(
       uri,

@@ -4,15 +4,15 @@ class Trip {
   final String id;
   final String origin;
   final String destination;
-  final double? tons;        // peso
-  final String cargoType;    // tipo_carga
-  final String vehicle;      // tipo_vehiculo
-  final num? price;          // valor (tarifa)
+  final double? tons;      // peso
+  final String cargoType;  // tipo_carga
+  final String vehicle;    // tipo_vehiculo
+  final num? price;        // valor (tarifa)
   final String? estado;
   final bool activo;
   final String? comercialId;
 
-  // Opcionales extra
+  // Campos extra
   final String? comercial;
   final String? contacto;
   final String? conductor;
@@ -39,22 +39,31 @@ class Trip {
     this.durationHours,
   });
 
-  /// Fecha/hora exacta de vencimiento
+  /// Fecha/hora exacta de vencimiento calculada en UTC.
   DateTime? get expiresAt {
     if (createdAt == null || durationHours == null) return null;
     final baseUtc = createdAt!.toUtc();
     return baseUtc.add(Duration(hours: durationHours!));
   }
 
-  /// Tiempo que falta para vencerse a partir de *ahora*
-  Duration? get remaining {
-    final exp = expiresAt;
-    if (exp == null) return null;
-    final nowUtc = DateTime.now().toUtc();
-    final diff = exp.difference(nowUtc);
-    if (diff.isNegative) return Duration.zero;
-    return diff;
-  }
+    /// Tiempo que falta para vencerse a partir de *ahora*
+    Duration? get remaining {
+      // 🔴 Si el viaje está inactivo (eliminado / expirado en backend),
+      // lo tratamos como vencido: no hay tiempo restante.
+      if (!activo) return null;
+
+      final exp = expiresAt;
+      if (exp == null) return null;
+
+      final nowUtc = DateTime.now().toUtc();
+      final diff = exp.difference(nowUtc);
+
+      // Si ya pasó la fecha, también lo consideramos vencido.
+      if (diff.isNegative) return null;
+
+      return diff;
+    }
+
 
   factory Trip.fromJson(Map<String, dynamic> json) {
     double? _toDouble(dynamic v) {
@@ -68,6 +77,7 @@ class Trip {
       if (v == null) return null;
       if (v is num) return v;
       if (v is String) {
+        // Normaliza "10.000,50" → "10000.50"
         return num.tryParse(
           v.replaceAll('.', '').replaceAll(',', '.'),
         );
@@ -86,10 +96,8 @@ class Trip {
 
     int? _parseDurationHours(dynamic raw) {
       if (raw == null) return null;
-
       if (raw is int) return raw;
       if (raw is num) return raw.toInt();
-
       if (raw is String) {
         final s = raw.trim();
         if (s.isEmpty) return null;
@@ -120,16 +128,11 @@ class Trip {
 
         return days * 24 + hours;
       }
-
       return null;
     }
 
-    // 🔴 Aquí estaba el problema:
-    // antes: json['duration_hours'] ?? json['duracion_publicacion']
-    // Si el backend manda duration_hours=24 y duracion_publicacion='06:00:00'
-    // nos quedábamos con 24. Ahora preferimos SIEMPRE el interval.
-    final durationRaw =
-        json['duracion_publicacion'] ?? json['duration_hours'];
+    // Preferimos siempre el intervalo calculado por el backend
+    final durationRaw = json['duracion_publicacion'] ?? json['duration_hours'];
 
     return Trip(
       id: (json['id'] ?? json['uuid'] ?? '').toString(),
@@ -140,8 +143,10 @@ class Trip {
       vehicle: (json['tipo_vehiculo'] ?? json['vehicle'] ?? '').toString(),
       price: _toNum(json['valor'] ?? json['price'] ?? json['tarifa']),
       estado: (json['estado'] ?? json['status'])?.toString(),
-      activo: ((json['activo'] ?? true).toString().toLowerCase() == 'true'),
-      comercialId: (json['comercial_id'] ?? json['created_by'])?.toString(),
+      activo:
+          ((json['activo'] ?? true).toString().toLowerCase() == 'true'),
+      comercialId:
+          (json['comercial_id'] ?? json['created_by'])?.toString(),
       comercial: (json['comercial'] ?? '').toString(),
       contacto: (json['contacto'] ?? '').toString(),
       conductor: (json['conductor'] ?? json['driver'] ?? '').toString(),

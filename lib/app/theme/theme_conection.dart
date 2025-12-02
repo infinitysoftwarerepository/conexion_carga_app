@@ -59,7 +59,7 @@ class AppColors extends ThemeExtension<AppColors> {
         success: kGreenStrong,
         glyph: kGreyText,
         cardBorder: kGreySoft,
-        helpBubbleBg: kBrandYellow,
+        helpBubbleBg: Color.fromARGB(209, 255, 214, 79),
       );
 
   /// 🌙 Configuración para tema OSCURO

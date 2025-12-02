@@ -57,7 +57,8 @@ class _PointsPageState extends State<PointsPage> {
     });
 
     try {
-      final uri = Uri.parse('${Env.baseUrl}/api/users?limit=1000');
+      final uri = Uri.parse('${Env.baseUrl}/api/users/leaderboard');
+
       final res = await http.get(uri).timeout(const Duration(seconds: 12));
 
       if (res.statusCode != 200) {

@@ -26,6 +26,8 @@ import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
 import 'package:conexion_carga_app/app/theme/theme_conection.dart' show AppColors;
+import 'package:conexion_carga_app/features/loads/presentation/pages/donation_page.dart';
+
 
 const _adImage = 'assets/images/ad_start_full.png';
 const _whatsappIcon = 'assets/icons/whatsapp.png';
@@ -80,22 +82,25 @@ class _StartPageState extends State<StartPage> {
     // Secuencia:
     // 1) Mostrar publicidad 5 s
     // 2) Ocultar publicidad
-    // 3) Mostrar burbuja “¿Dudas?” 5 s
-    // 4) Ocultar burbuja
+    // 3) Mostrar burbuja “¿Necesitas ayuda?” (y ahora NO se oculta)
     Timer(const Duration(seconds: 5), () {
       if (!mounted) return;
       setState(() => _showAd = false);
 
+      // Mostramos la burbuja…
       setState(() => _showHint = true);
-      Timer(const Duration(seconds: 5), () {
-        if (!mounted) return;
-        setState(() => _showHint = false);
-      });
+
+      // ⛔️ ELIMINA COMPLETAMENTE ESTE BLOQUE:
+      // Timer(const Duration(seconds: 5), () {
+      //   if (!mounted) return;
+      //   setState(() => _showHint = false);
+      // });
     });
   }
 
+
   Future<void> _openWhatsApp() async {
-    const phone = '+573207259517';
+    const phone = '+573019043971';
     const message = '''
  Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación entre las partes y no asume responsabilidad alguna por la negociación o cumplimiento de los acuerdos. Puedo reportar irregularidades al correo electrónico: conexioncarga@gmail.com 
 ''';
@@ -520,8 +525,15 @@ class _StartPageState extends State<StartPage> {
             child: Material(
               elevation: 12,
               color: Theme.of(context).scaffoldBackgroundColor,
-              child: const BottomBannerSection(
-                donationNumber: '008-168-23331',
+              child: BottomBannerSection(
+                donationNumber: '0091262121',
+                onTapDonation: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const DonationPage(),
+                    ),
+                  );
+                },
               ),
             ),
           ),
@@ -544,7 +556,7 @@ class _StartPageState extends State<StartPage> {
 
           // ─────────────── BOTÓN FLOTANTE WHATSAPP ───────────────
           Positioned(
-            bottom: 140,
+            bottom: 180,
             left: 16,
             child: SafeArea(
               child: Column(
@@ -573,7 +585,7 @@ class _StartPageState extends State<StartPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '¿Dudas ?',
+                            '¿Necesitas ayuda?',
                             style: TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ],
@@ -588,7 +600,7 @@ class _StartPageState extends State<StartPage> {
                       height: 46,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Color(0xFF25D366),
+                        color: kGreenStrong,
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black26,
@@ -618,6 +630,7 @@ class _StartPageState extends State<StartPage> {
   // ===================== Header =====================
   Widget _buildHeaderButtons(BuildContext context) {
     final user = AuthSession.instance.user.value;
+    final bool isDriver = user?.isDriver ?? false;  // 👈 NUEVO
     final isLight = Theme.of(context).brightness == Brightness.light;
     final bg = isLight ? kGreenStrong : kDeepDarkGreen;
     final fg = isLight ? Colors.white : kGreyText;
@@ -692,35 +705,73 @@ class _StartPageState extends State<StartPage> {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
-          Expanded(
-            child: compact(
-              NewActionFab(
-                label: '+ Registrar viaje',
-                icon: Icons.add_road,
-                backgroundColor: bg,
-                foregroundColor: fg,
-                onTap: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const NewTripPage()),
+        Expanded(
+          child: compact(
+            NewActionFab(
+              label: '+ Registrar viaje',
+              icon: Icons.add_road,
+              backgroundColor: isDriver ? Colors.grey : bg,  // gris si es conductor
+              foregroundColor: fg,
+              onTap: () {
+                // Si es conductor, NO dejar registrar viaje
+                if (isDriver) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Como conductor no puedes registrar viajes.'),
+                    ),
                   );
-                  await _reload();
-                },
-              ),
+                  return;
+                }
+
+                // Si NO es conductor, flujo normal
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (_) => const NewTripPage(),
+                      ),
+                    )
+                    .then((changed) async {
+                  if (changed == true) {
+                    await _reload();
+                  }
+                });
+              },
             ),
           ),
+        ),
+
           const SizedBox(width: 12),
           Expanded(
             child: compact(
               NewActionFab(
                 label: 'Mis viajes',
                 icon: Icons.local_shipping_outlined,
-                backgroundColor: bg,
+                backgroundColor: isDriver ? Colors.grey : bg,  
                 foregroundColor: fg,
                 onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const MyLoadsPage()),
+                // Si es conductor, NO dejar registrar viaje
+                if (isDriver) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Como conductor no puedes registrar viajes.'),
+                    ),
                   );
-                },
+                  return;
+                }
+
+                // Si NO es conductor, flujo normal
+                Navigator.of(context)
+                    .push(
+                      MaterialPageRoute(
+                        builder: (_) => const MyLoadsPage(),
+                      ),
+                    )
+                    .then((changed) async {
+                  if (changed == true) {
+                    await _reload();
+                  }
+                });
+              }
               ),
             ),
           ),

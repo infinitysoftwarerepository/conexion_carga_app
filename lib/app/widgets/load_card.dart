@@ -1,3 +1,4 @@
+import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -7,10 +8,13 @@ import 'package:conexion_carga_app/app/widgets/time_bubbles.dart';
 class LoadCard extends StatelessWidget {
   final Trip trip;
   final bool isMine;
+  
 
   /// 👇 Nuevo flag: solo lo usamos desde MyLoadsPage
   /// para dibujar la tarjeta “apagada / vencida”.
   final bool isExpired;
+
+  
 
   const LoadCard({
     super.key,
@@ -38,6 +42,8 @@ class LoadCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final remaining = trip.remaining;
+    final empresa = trip.empresa ?? '';
+     
 
     // 🎨 Si está vencida: la tarjeta se ve más “apagada”
     final Color cardColor = isExpired
@@ -77,7 +83,7 @@ class LoadCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(6),
       child: Stack(
         children: [
           Column(
@@ -91,11 +97,11 @@ class LoadCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       '${trip.origin} → ${trip.destination}',
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                        fontSize: 14,
                       ),
                     ),
                   ),
@@ -105,7 +111,7 @@ class LoadCard extends StatelessWidget {
                   ],
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
 
               // Tipo de carga
               Row(
@@ -113,7 +119,7 @@ class LoadCard extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.inventory_2_outlined,
-                    size: 16,
+                    size: 14,
                     color: Colors.black54,
                   ),
                   const SizedBox(width: 6),
@@ -123,14 +129,14 @@ class LoadCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 10,
                         color: Colors.black87,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
 
               // Tipo de vehículo
               Row(
@@ -138,7 +144,7 @@ class LoadCard extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.local_shipping_outlined,
-                    size: 16,
+                    size: 14,
                     color: Colors.black54,
                   ),
                   const SizedBox(width: 6),
@@ -148,21 +154,21 @@ class LoadCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 10,
                         color: Colors.black87,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
 
               // Tonelaje
               Row(
                 children: [
                   const Icon(
                     Icons.scale_outlined,
-                    size: 16,
+                    size: 14,
                     color: Colors.black54,
                   ),
                   const SizedBox(width: 6),
@@ -170,18 +176,21 @@ class LoadCard extends StatelessWidget {
                     _formatTons(trip.tons),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                      ),
                   ),
                 ],
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 3),
 
               // Precio
               Row(
                 children: [
                   const Icon(
                     Icons.attach_money,
-                    size: 16,
+                    size: 14,
                     color: Colors.black54,
                   ),
                   const SizedBox(width: 6),
@@ -192,13 +201,39 @@ class LoadCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
+                        fontSize: 10
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-
+              const SizedBox(height: 3),
+              // Empresa
+              if (empresa.isNotEmpty) ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.business_outlined,
+                      size: 14,
+                      color: Colors.black54,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        empresa,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 5),
               // Píldora “Toque aquí…”
               Row(
                 children: [
@@ -206,7 +241,7 @@ class LoadCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8,
-                        vertical: 6,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: cs.primary.withOpacity(0.08),
@@ -220,7 +255,7 @@ class LoadCard extends StatelessWidget {
                             size: 16,
                             color: cs.primary.withOpacity(0.85),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Flexible(
                             child: Text(
                               'Más info aquí !',
@@ -228,7 +263,7 @@ class LoadCard extends StatelessWidget {
                               softWrap: false,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w600,
                                 color: cs.primary.withOpacity(0.90),
                                 letterSpacing: .1,
@@ -242,12 +277,14 @@ class LoadCard extends StatelessWidget {
                 ],
               ),
 
+              const SizedBox(height: 3),
+
               // Burbujas de tiempo: solo si NO está marcada como vencida
               if (!isExpired &&
                   remaining != null &&
                   remaining > Duration.zero) ...[
                 const SizedBox(height: 4),
-                TimeBubbleRowSmall(remaining: remaining),
+                TimeBubbleRowSmall(remaining: remaining,),
               ],
             ],
           ),
@@ -258,10 +295,10 @@ class LoadCard extends StatelessWidget {
               right: 0,
               bottom: 0,
               child: Container(
-                width: 28,
-                height: 28,
+                width: 25,
+                height: 25,
                 decoration: BoxDecoration(
-                  color: Colors.green.shade600,
+                  color: kGreenStrong,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(

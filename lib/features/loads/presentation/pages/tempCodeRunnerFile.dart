@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:conexion_carga_app/features/auth/data/verification_api.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/login_page.dart';
 
 /// Pantalla para ingresar el código de verificación enviado por email.
 /// Muestra: correo, input de 6 dígitos, botón verificar y reenviar con cooldown.
@@ -68,11 +69,15 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('¡Correo verificado con éxito!')),
+        const SnackBar(content: Text('Usuario creado con éxito. Ahora puedes iniciar sesión.')),
       );
 
-      // Aquí decides a dónde ir: login o home
-      Navigator.of(context).pop(true); // o pushReplacementNamed('/home');
+      // 👉 Ir a LoginPage y limpiar el historial
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
+ // o pushReplacementNamed('/home');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),

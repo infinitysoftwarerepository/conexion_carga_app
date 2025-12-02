@@ -115,21 +115,22 @@ class _TripDetailPageState extends State<TripDetailPage> {
           }
 
           // ------------ Valores de detalle (con fallback al Trip) ------------
-          final origen        = s('origen',        fallback: trip.origin);
-          final destino       = s('destino',       fallback: trip.destination);
-          final pesoNum       = n('peso',          fallback: trip.tons);
-          final tipoCarga     = s('tipo_carga',    fallback: trip.cargoType);
-          final tipoVehiculo  = s('tipo_vehiculo', fallback: trip.vehicle);
-          final valorNum      = n('valor',         fallback: trip.price);
-          final conductor     = s('conductor',     fallback: '');
+          final origen = s('origen', fallback: trip.origin);
+          final destino = s('destino', fallback: trip.destination);
+          final pesoNum = n('peso', fallback: trip.tons);
+          final tipoCarga = s('tipo_carga', fallback: trip.cargoType);
+          final tipoVehiculo = s('tipo_vehiculo', fallback: trip.vehicle);
+          final valorNum = n('valor', fallback: trip.price);
+          final empresa = s('empresa', fallback: trip.empresa ?? '');
+          final conductor = s('conductor', fallback: '');
           final observaciones = s('observaciones', fallback: '');
-          final comercial     = s('comercial',     fallback: trip.comercial ?? '');
-          final contacto      = s('contacto',      fallback: trip.contacto ?? '');
+          final comercial = s('comercial', fallback: trip.comercial ?? '');
+          final contacto = s('contacto', fallback: trip.contacto ?? '');
 
           // ------------ ¿El viaje es mío? (para botones de abajo) ------------
-          final myUserId  = AuthSession.instance.user.value?.id ?? '';
+          final myUserId = AuthSession.instance.user.value?.id ?? '';
           final creadorId = s('comercial_id', fallback: trip.comercialId ?? '');
-          final isMine    = creadorId == myUserId;
+          final isMine = creadorId == myUserId;
 
           // ------------ Lógica de vencimiento / eliminado ------------
           final Duration? rem = _remaining ?? trip.remaining;
@@ -160,7 +161,9 @@ class _TripDetailPageState extends State<TripDetailPage> {
 
                 // --------- Burbujas de tiempo o aviso vencido ----------
                 if (!isExpired && rem != null) ...[
-                  TimeBubbleRowSmall(remaining: rem),
+                  TimeBubbleRowBig(
+                    remaining: rem,
+                  ),
                 ] else ...[
                   Text(
                     'Este viaje ya está vencido.',
@@ -173,15 +176,22 @@ class _TripDetailPageState extends State<TripDetailPage> {
 
                 const SizedBox(height: 12),
 
+                const SizedBox(height: 12),
+
                 // --------- Detalle de campos ----------
-                _row('Peso',            (pesoNum != null) ? _fmtTons(pesoNum) : '-'),
-                _row('Tipo de carga',    tipoCarga.isEmpty ? '-' : tipoCarga),
-                _row('Tipo de vehículo', tipoVehiculo.isEmpty ? '-' : tipoVehiculo),
-                _row('Tarifa',           (valorNum != null) ? _fmtMoney(valorNum) : '-'),
-                _row('Conductor',        conductor.isEmpty ? '-' : conductor),
-                _row('Observaciones',    observaciones.isEmpty ? '-' : observaciones),
-                _row('Comercial',        comercial.isEmpty ? '-' : comercial),
-                _row('Contacto',         contacto.isEmpty ? '-' : contacto),
+                _row(
+                    'Peso', (pesoNum != null) ? _fmtTons(pesoNum) : '-'),
+                _row('Tipo de carga', tipoCarga.isEmpty ? '-' : tipoCarga),
+                _row('Tipo de vehículo',
+                    tipoVehiculo.isEmpty ? '-' : tipoVehiculo),
+                _row('Valor',
+                    (valorNum != null) ? _fmtMoney(valorNum) : '-'),
+                _row('Empresa', empresa.isEmpty ? '-' : empresa),
+
+                _row('Observaciones',
+                    observaciones.isEmpty ? '-' : observaciones),
+                _row('Comercial', comercial.isEmpty ? '-' : comercial),
+                _row('Contacto', contacto.isEmpty ? '-' : contacto),
 
                 const SizedBox(height: 20),
 
@@ -199,7 +209,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
                   child: const Text(
                     'Conexión Carga únicamente facilita la comunicación entre las partes y no asume '
                     'responsabilidad alguna por la negociación o cumplimiento de los acuerdos. '
-                    'Reportes de irregularidades al correo electrónico: conexioncarga@gmail.com',
+                    'Reportes de irregularidades al WhatsApp: +57 301 9043971',
                     textAlign: TextAlign.center,
                     style: TextStyle(height: 1.25),
                   ),
@@ -230,10 +240,10 @@ class _TripDetailPageState extends State<TripDetailPage> {
             return (v == null) ? fallback : v.toString().trim();
           }
 
-          final myUserId  = AuthSession.instance.user.value?.id ?? '';
+          final myUserId = AuthSession.instance.user.value?.id ?? '';
           final creadorId = s('comercial_id', fallback: trip.comercialId ?? '');
-          final isMine    = creadorId == myUserId;
-          final contacto  = s('contacto',      fallback: trip.contacto ?? '');
+          final isMine = creadorId == myUserId;
+          final contacto = s('contacto', fallback: trip.contacto ?? '');
 
           // 🔁 Reusamos la lógica de vencido también aquí
           final Duration? rem = _remaining ?? trip.remaining;
@@ -259,17 +269,23 @@ class _TripDetailPageState extends State<TripDetailPage> {
 
           void onContact() => _openWhatsApp(context, contacto);
 
+          // 🔧 Estilos compactos para evitar overflows y 2 líneas
           final btnStyle = FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-            minimumSize: const Size(0, 44),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            minimumSize: const Size(0, 40),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           );
 
-          final labelContactar = const Text(
-            'Contactar',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 14),
+          final outlinedBtnStyle = OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+            minimumSize: const Size(0, 40),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           );
+
+          final labelContactar = _oneLineLabel('Contactar');
+          final labelExportar = _oneLineLabel('Exportar');
+          final labelReutilizar = _oneLineLabel('Reutilizar');
+          final labelEliminar = _oneLineLabel('Eliminar');
 
           return SafeArea(
             top: false,
@@ -290,7 +306,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
                         Expanded(
                           child: FilledButton.icon(
                             icon: const Icon(Icons.ios_share),
-                            label: const Text('Exportar'),
+                            label: labelExportar,
                             onPressed: () => _exportTrip(context, raw, trip),
                             style: btnStyle,
                           ),
@@ -303,7 +319,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
                           child: isExpired
                               ? OutlinedButton.icon(
                                   icon: const Icon(Icons.recycling),
-                                  label: const Text('Reutilizar'),
+                                  label: labelReutilizar,
                                   onPressed: () async {
                                     await Navigator.push(
                                       context,
@@ -313,11 +329,12 @@ class _TripDetailPageState extends State<TripDetailPage> {
                                       ),
                                     );
                                   },
+                                  style: outlinedBtnStyle,
                                 )
                               : OutlinedButton.icon(
                                   icon: const Icon(
                                       Icons.delete_forever_outlined),
-                                  label: const Text('Eliminar'),
+                                  label: labelEliminar,
                                   onPressed: () async {
                                     try {
                                       await LoadsApi.expire(trip.id);
@@ -340,6 +357,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
                                       );
                                     }
                                   },
+                                  style: outlinedBtnStyle,
                                 ),
                         ),
                       ],
@@ -358,7 +376,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
                         Expanded(
                           child: FilledButton.icon(
                             icon: const Icon(Icons.ios_share),
-                            label: const Text('Exportar'),
+                            label: labelExportar,
                             onPressed: () => _exportTrip(context, raw, trip),
                             style: btnStyle,
                           ),
@@ -372,9 +390,7 @@ class _TripDetailPageState extends State<TripDetailPage> {
     );
   }
 
-  // --------------------------------------------------------------------------
-  // Helpers de UI
-  // --------------------------------------------------------------------------
+  // --------------------------- Helpers de UI ---------------------------
   Widget _row(String label, String value) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Row(
@@ -396,6 +412,19 @@ class _TripDetailPageState extends State<TripDetailPage> {
           ],
         ),
       );
+
+  // 🔧 Texto de botón que NUNCA se parte en 2 líneas
+  Widget _oneLineLabel(String text) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.visible,
+        style: const TextStyle(fontSize: 14),
+      ),
+    );
+  }
 
   String _fmtTons(num v) {
     final d = v.toDouble();
@@ -453,16 +482,18 @@ class _TripDetailPageState extends State<TripDetailPage> {
       return fallback;
     }
 
-    final origen        = s('origen',        fallback: trip.origin);
-    final destino       = s('destino',       fallback: trip.destination);
-    final pesoNum       = n('peso',          fallback: trip.tons);
-    final tipoCarga     = s('tipo_carga',    fallback: trip.cargoType);
-    final tipoVehiculo  = s('tipo_vehiculo', fallback: trip.vehicle);
-    final valorNum      = n('valor',         fallback: trip.price);
-    final conductor     = s('conductor',     fallback: '');
+    final origen = s('origen', fallback: trip.origin);
+    final destino = s('destino', fallback: trip.destination);
+    final pesoNum = n('peso', fallback: trip.tons);
+    final tipoCarga = s('tipo_carga', fallback: trip.cargoType);
+    final tipoVehiculo = s('tipo_vehiculo', fallback: trip.vehicle);
+    final valorNum = n('valor', fallback: trip.price);
+    final empresa = s('empresa', fallback: trip.empresa ?? '');
+
+    final conductor = s('conductor', fallback: '');
     final observaciones = s('observaciones', fallback: '');
-    final comercial     = s('comercial',     fallback: trip.comercial ?? '');
-    final contacto      = s('contacto',      fallback: trip.contacto ?? '');
+    final comercial = s('comercial', fallback: trip.comercial ?? '');
+    final contacto = s('contacto', fallback: trip.contacto ?? '');
 
     final buffer = StringBuffer()
       ..writeln('📦 Detalle del viaje')
@@ -470,7 +501,8 @@ class _TripDetailPageState extends State<TripDetailPage> {
       ..writeln('Peso: ${pesoNum != null ? _fmtTons(pesoNum) : '-'}')
       ..writeln('Tipo de carga: ${tipoCarga.isEmpty ? '-' : tipoCarga}')
       ..writeln('Tipo de vehículo: ${tipoVehiculo.isEmpty ? '-' : tipoVehiculo}')
-      ..writeln('Tarifa: ${valorNum != null ? _fmtMoney(valorNum) : '-'}')
+      ..writeln('Valor: ${valorNum != null ? _fmtMoney(valorNum) : '-'}')
+      ..writeln('Empresa: ${empresa.isEmpty ? '-' : empresa}')
       ..writeln('Conductor: ${conductor.isEmpty ? '-' : conductor}')
       ..writeln('Observaciones: ${observaciones.isEmpty ? '-' : observaciones}')
       ..writeln('Comercial: ${comercial.isEmpty ? '-' : comercial}')
@@ -485,4 +517,3 @@ class _TripDetailPageState extends State<TripDetailPage> {
     );
   }
 }
-

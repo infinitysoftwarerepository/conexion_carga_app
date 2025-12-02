@@ -1,6 +1,7 @@
 import 'dart:convert' as convert;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart'; // para RenderBox en el dropdown
 import 'package:http/http.dart' as http;
 
 import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
@@ -9,8 +10,10 @@ import 'package:conexion_carga_app/app/widgets/inputs/app_text_field.dart';
 import 'package:conexion_carga_app/app/widgets/inputs/app_multiline_field.dart';
 import 'package:conexion_carga_app/core/env.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
-import 'package:conexion_carga_app/features/loads/domain/trip.dart'; // 👈 nuevo
+import 'package:conexion_carga_app/features/loads/domain/trip.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/start_page.dart';
 
+/// Pantalla para registrar un nuevo viaje (y reutilizar uno existente)
 class NewTripPage extends StatefulWidget {
   /// Cuando se pasa un trip, la pantalla se usa como “Reutilizar viaje”
   final Trip? initialTrip;
@@ -22,22 +25,25 @@ class NewTripPage extends StatefulWidget {
 }
 
 class _NewTripPageState extends State<NewTripPage> {
-  // Controladores
+  // ---------------------------------------------------------------------------
+  // Controladores por campo
+  // ---------------------------------------------------------------------------
   final _origenCtrl = TextEditingController();
   final _destinoCtrl = TextEditingController();
+  final _tipoVehiculoCtrl = TextEditingController();
   final _tipoCargaCtrl = TextEditingController();
-  final _pesoCtrl = TextEditingController();
   final _valorCtrl = TextEditingController();
+  final _pesoCtrl = TextEditingController();
+  final _empresaCtrl = TextEditingController();
   final _comercialCtrl = TextEditingController();
   final _contactoCtrl = TextEditingController();
-  final _conductorCtrl = TextEditingController();
-  final _tipoVehiculoCtrl = TextEditingController();
+  final _conductorCtrl = TextEditingController(); // se sigue usando en el body
   final _obsCtrl = TextEditingController();
 
+  // Viaje estándar/premium
   bool _premium = false;
 
-  /// Valor que se envía al backend en duration_hours
-  /// 6 por defecto para que el primer chip ya quede seleccionado.
+  /// duration_hours (por defecto 6 para que el primer chip quede seleccionado)
   int _durationHours = 6;
 
   // Caché de catálogos por endpoint
@@ -47,31 +53,41 @@ class _NewTripPageState extends State<NewTripPage> {
   void initState() {
     super.initState();
 
-    // Nombre del comercial por defecto = usuario autenticado
+    // -------------------------------------------------------------------------
+    // Prefills desde usuario autenticado
+    // -------------------------------------------------------------------------
     final u = AuthSession.instance.user.value;
+
+    // Comercial por defecto = nombre del usuario
     final fullName = [
       (u?.firstName ?? '').trim(),
       (u?.lastName ?? '').trim(),
     ].where((s) => s.isNotEmpty).join(' ');
     _comercialCtrl.text = fullName;
 
-    // 👇 Si venimos desde "Reutilizar", precargamos los datos del viaje
+    // Empresa por defecto (si viene)
+    final company = (u?.companyName ?? '').trim();
+    if (company.isNotEmpty) _empresaCtrl.text = company;
+
+    // -------------------------------------------------------------------------
+    // Si venimos de “Reutilizar viaje”, precargamos los datos
+    // -------------------------------------------------------------------------
     final t = widget.initialTrip;
     if (t != null) {
       _origenCtrl.text = t.origin;
       _destinoCtrl.text = t.destination;
       _tipoCargaCtrl.text = t.cargoType;
+      _tipoVehiculoCtrl.text = t.vehicle;
+
       if (t.tons != null) {
         final d = t.tons!.toDouble();
-        _pesoCtrl.text = d == d.truncateToDouble()
-            ? d.toStringAsFixed(0)
-            : d.toStringAsFixed(1);
+        _pesoCtrl.text =
+            d == d.truncateToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(1);
       }
       if (t.price != null) {
         _valorCtrl.text = t.price!.toStringAsFixed(0);
       }
 
-      // Comercial / contacto del viaje original si existen
       if ((t.comercial ?? '').trim().isNotEmpty) {
         _comercialCtrl.text = t.comercial!;
       }
@@ -81,8 +97,6 @@ class _NewTripPageState extends State<NewTripPage> {
       if ((t.conductor ?? '').trim().isNotEmpty) {
         _conductorCtrl.text = t.conductor!;
       }
-
-      _tipoVehiculoCtrl.text = t.vehicle;
 
       if (t.durationHours != null) {
         _durationHours = t.durationHours!;
@@ -94,31 +108,119 @@ class _NewTripPageState extends State<NewTripPage> {
   void dispose() {
     _origenCtrl.dispose();
     _destinoCtrl.dispose();
+    _tipoVehiculoCtrl.dispose();
     _tipoCargaCtrl.dispose();
-    _pesoCtrl.dispose();
     _valorCtrl.dispose();
+    _pesoCtrl.dispose();
+    _empresaCtrl.dispose();
     _comercialCtrl.dispose();
     _contactoCtrl.dispose();
     _conductorCtrl.dispose();
-    _tipoVehiculoCtrl.dispose();
     _obsCtrl.dispose();
     super.dispose();
   }
 
-  // -------------------- FALLBACKS LOCALES --------------------
+  // ---------------------------------------------------------------------------
+  // FALLBACKS LOCALES (por si el backend falla)
+  // ---------------------------------------------------------------------------
   static const _fallbackMunicipios = <String>[
-    'Bogotá',
-    'Medellín',
-    'Cali',
+    'Abejorral',
+    'Abriaquí',
+    'Amagá',
+    'Andes',
+    'Angelópolis',
+    'Apartadó',
+    'Armenia',
+    'Barbosa',
+    'Barrancabermeja',
     'Barranquilla',
-    'Cartagena',
+    'Bello',
+    'Bello Oriente',
+    'Bogotá',
     'Bucaramanga',
+    'Buenaventura',
+    'Caldas',
+    'Cali',
+    'Cañas Gordas',
+    'Cartagena',
+    'Cartago',
+    'Caucasia',
+    'Cereté',
+    'Ciénaga',
+    'Ciénaga de Oro',
+    'Copacabana',
+    'Corozal',
     'Cúcuta',
-    'Pereira',
-    'Manizales',
+    'Don Matías',
+    'Doradal',
+    'Dosquebradas',
+    'El Bagre',
+    'El Carmen de Viboral',
+    'El Junco',
+    'Entrerríos',
+    'Envigado',
+    'Floridablanca',
+    'Frontino',
+    'Galapa',
+    'Girardota',
+    'Girón',
+    'Guarne',
     'Ibagué',
+    'Itagüí',
+    'Jamundí',
+    'La Ceja',
+    'La Dorada',
+    'La Estrella',
+    'La Pintada',
+    'La Tebaida',
+    'Magangué',
+    'Manizales',
+    'Medellín',
+    'Montelíbano',
+    'Montería',
+    'Neiva',
+    'Pailitas',
+    'Palmira',
+    'Pasto',
+    'Pereira',
+    'Piedecuesta',
+    'Pitalito',
+    'Planeta Rica',
+    'Popayán',
+    'Puerto Berrío',
+    'Puerto Boyacá',
+    'Puerto Parra',
+    'Puerto Tejada',
+    'Puerto Triunfo',
+    'Quibdó',
+    'Rionegro',
+    'Sabana de Torres',
+    'Sabaneta',
+    'Sahagún',
+    'Salgar',
+    'San Alberto',
+    'San Carlos',
+    'San Cristóbal',
+    'San Marcos',
+    'San Onofre',
+    'Santa Marta',
+    'Santa Rosa de Cabal',
+    'Santa Rosa de Osos',
+    'Santander de Quilichao',
+    'Sincelejo',
+    'Sincé',
+    'Sitio Nuevo',
+    'Sogamoso',
+    'Tocancipá',
+    'Tuluá',
+    'Turbo',
+    'Turbaco',
+    'Urabá',
+    'Valledupar',
     'Villavicencio',
-    'Santa Marta'
+    'Yarumal',
+    'Yopal',
+    'Zarzal',
   ];
 
   static const _fallbackTiposCarga = <String>[
@@ -130,7 +232,7 @@ class _NewTripPageState extends State<NewTripPage> {
     'Peligrosa',
     'Refrigerada',
     'Perecedera',
-    'Material de construcción'
+    'Material de construcción',
   ];
 
   static const _fallbackTiposVehiculo = <String>[
@@ -141,7 +243,7 @@ class _NewTripPageState extends State<NewTripPage> {
     'NHR',
     'NPR',
     'Vehículo rígido de dos ejes',
-    'Vehículo rígido de tres ejes'
+    'Vehículo rígido de tres ejes',
   ];
 
   List<String> _fallbackFor(String endpoint) {
@@ -151,7 +253,9 @@ class _NewTripPageState extends State<NewTripPage> {
     return const <String>[];
   }
 
-  // -------------------- FETCH CATÁLOGOS --------------------
+  // ---------------------------------------------------------------------------
+  // FETCH CATÁLOGOS (con caché + fallbacks)
+  // ---------------------------------------------------------------------------
   Future<List<String>> _fetchCatalog(String endpoint) async {
     if (_cache.containsKey(endpoint)) return _cache[endpoint]!;
 
@@ -186,7 +290,7 @@ class _NewTripPageState extends State<NewTripPage> {
       if (json is List) {
         list = json;
       } else if (json is Map) {
-        final keys = [
+        const keys = [
           'data',
           'items',
           'rows',
@@ -195,7 +299,7 @@ class _NewTripPageState extends State<NewTripPage> {
           'municipios',
           'tipos',
           'catalogo',
-          'catalogos'
+          'catalogos',
         ];
         for (final k in keys) {
           if (json[k] is List) {
@@ -205,7 +309,7 @@ class _NewTripPageState extends State<NewTripPage> {
         }
         if (list.isEmpty) {
           List<dynamic> biggest = const [];
-          json.forEach((k, v) {
+          json.forEach((_, v) {
             if (v is List && v.length > biggest.length) biggest = v;
           });
           list = biggest;
@@ -246,9 +350,11 @@ class _NewTripPageState extends State<NewTripPage> {
     }
   }
 
-  // -------------------- GUARDAR --------------------
+  // ---------------------------------------------------------------------------
+  // GUARDAR VIAJE
+  // ---------------------------------------------------------------------------
   Future<void> _guardar() async {
-    FocusScope.of(context).unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
 
     if (_origenCtrl.text.isEmpty ||
         _destinoCtrl.text.isEmpty ||
@@ -268,24 +374,23 @@ class _NewTripPageState extends State<NewTripPage> {
     final uri = Uri.parse('${Env.baseUrl}/api/loads');
 
     final body = {
-      "empresa_id": null,
+      "empresa":
+          _empresaCtrl.text.trim().isEmpty ? null : _empresaCtrl.text.trim(),
       "origen": _origenCtrl.text.trim(),
       "destino": _destinoCtrl.text.trim(),
       "tipo_carga": _tipoCargaCtrl.text.trim(),
-      "peso":
-          double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
+      "peso": double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0.0,
       "valor": int.tryParse(
               _valorCtrl.text.replaceAll('.', '').replaceAll(',', '')) ??
           0,
-      "conductor":
-          _conductorCtrl.text.trim().isEmpty ? null : _conductorCtrl.text.trim(),
+      "conductor": _conductorCtrl.text.trim().isEmpty
+          ? null
+          : _conductorCtrl.text.trim(),
       "tipo_vehiculo": _tipoVehiculoCtrl.text.trim().isEmpty
           ? null
           : _tipoVehiculoCtrl.text.trim(),
-      "observaciones": _obsCtrl.text.trim().isEmpty
-          ? null
-          : _obsCtrl.text.trim(),
-      // 👇 se envía tal cual está el chip elegido
+      "observaciones":
+          _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
       "duration_hours": _durationHours,
       "premium_trip": _premium,
       "comercial": _comercialCtrl.text.trim(),
@@ -309,9 +414,7 @@ class _NewTripPageState extends State<NewTripPage> {
         String msg = 'No se pudo registrar el viaje (${res.statusCode}).';
         try {
           final m = convert.jsonDecode(res.body);
-          if (m is Map && m['detail'] != null) {
-            msg = m['detail'].toString();
-          }
+          if (m is Map && m['detail'] != null) msg = m['detail'].toString();
         } catch (_) {}
         throw Exception(msg);
       }
@@ -320,212 +423,50 @@ class _NewTripPageState extends State<NewTripPage> {
 
       final me = AuthSession.instance.user.value;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Viaje registrado para ${me?.firstName ?? 'ti'}'),
-        ),
+        SnackBar(content: Text('Viaje registrado para ${me?.firstName ?? 'ti'}')),
       );
-      Navigator.of(context).pop(true);
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const StartPage()),
+          (route) => false,
+        );
+      });
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            e.toString().replaceFirst('Exception: ', ''),
-          ),
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
         ),
       );
     }
   }
 
-  // -------------------- UI --------------------
+  // ---------------------------------------------------------------------------
+  // UI
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    final form = Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          _Row2(
-            left: DropdownCatalogField(
-              label: 'Origen',
-              hint: 'Ciudad de origen',
-              controller: _origenCtrl,
-              icon: Icons.location_on_outlined,
-              endpoint: '/api/catalogos/municipios',
-              loader: _fetchCatalog,
-            ),
-            right: DropdownCatalogField(
-              label: 'Destino',
-              hint: 'Ciudad de destino',
-              controller: _destinoCtrl,
-              icon: Icons.flag_outlined,
-              endpoint: '/api/catalogos/municipios',
-              loader: _fetchCatalog,
-            ),
-          ),
-          const SizedBox(height: 6),
-          _Row2(
-            left: DropdownCatalogField(
-              label: 'Tipo de carga',
-              hint: 'Granel, Contenedor, etc.',
-              controller: _tipoCargaCtrl,
-              icon: Icons.inventory_2_outlined,
-              endpoint: '/api/catalogos/tipos-carga',
-              loader: _fetchCatalog,
-            ),
-            right: AppTextField(
-              label: 'Peso (T)',
-              hint: 'Ej: 32',
-              controller: _pesoCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              icon: Icons.scale_outlined,
-            ),
-          ),
-          const SizedBox(height: 6),
-          _Row2(
-            left: AppTextField(
-              label: 'Valor (COP)',
-              hint: 'Ej: 10000000',
-              controller: _valorCtrl,
-              keyboardType: TextInputType.number,
-              icon: Icons.attach_money,
-            ),
-            right: AppTextField(
-              label: 'Comercial',
-              hint: 'Nombre del comercial',
-              controller: _comercialCtrl,
-              icon: Icons.badge_outlined,
-            ),
-          ),
-          const SizedBox(height: 6),
-          _Row2(
-            left: AppTextField(
-              label: 'Contacto (teléfono)',
-              hint: 'Cel del comercial',
-              controller: _contactoCtrl,
-              keyboardType: TextInputType.phone,
-              icon: Icons.phone_outlined,
-            ),
-            right: AppTextField(
-              label: 'Conductor',
-              hint: 'Nombre del conductor',
-              controller: _conductorCtrl,
-              icon: Icons.person_outline,
-            ),
-          ),
-          const SizedBox(height: 6),
-          _Row2(
-            left: DropdownCatalogField(
-              label: 'Tipo de vehículo',
-              hint: 'Tracto, Sencillo, …',
-              controller: _tipoVehiculoCtrl,
-              icon: Icons.agriculture_outlined,
-              endpoint: '/api/catalogos/tipos-vehiculo',
-              loader: _fetchCatalog,
-            ),
-            right: const SizedBox.shrink(),
-          ),
-          const SizedBox(height: 6),
-          AppMultilineField(
-            label: 'Observaciones',
-            controller: _obsCtrl,
-            hint: 'Detalles adicionales…',
-            minLines: 2,
-            maxLines: 4,
-          ),
-          const SizedBox(height: 6),
-
-          // Bloque tipo de viaje + duración
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.light
-                  ? cs.surfaceVariant.withOpacity(0.30)
-                  : cs.surfaceVariant.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Tipo de viaje',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Row(children: [
-                      Radio<bool>(
-                        value: false,
-                        groupValue: _premium,
-                        onChanged: (_) {},
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      const Text('Viaje estándar'),
-                    ]),
-                    const SizedBox(width: 8),
-                    Opacity(
-                      opacity: 0.45,
-                      child: Row(children: [
-                        Radio<bool>(
-                          value: true,
-                          groupValue: _premium,
-                          onChanged: null,
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        const Text('Viaje premium'),
-                      ]),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'El viaje se borrará automáticamente en:',
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 4),
-                _DurationChips(
-                  value: _durationHours,
-                  onChanged: (v) {
-                    setState(() {
-                      _durationHours = v;
-                    });
-                    // ignore: avoid_print
-                    print('[NEW TRIP] chip pulsado → $_durationHours h');
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Cancelar'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: _guardar,
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text('¡ Publicar !'),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    // Config UI centralizada (para que sea fácil tunear después)
+    const fieldUi = FieldUi(
+      iconSize: 20,
+      prefixIconMinWidth: 40,
+      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      suffixIconBox: 40,
+      radius: 10,
+      labelGap: 6,
+      rowGap: 12,
+      sectionGap: 14,
+      maxWidth: 560, // ancho máximo del formulario
+      breakpointTwoCols: 420, // < 420px -> 1 columna, >= 420px -> 2 columnas
     );
 
     return Scaffold(
+      resizeToAvoidBottomInset: true, // importante para Android viejos
       appBar: CustomAppBar(
         titleSpacing: 0,
         height: 56,
@@ -533,45 +474,318 @@ class _NewTripPageState extends State<NewTripPage> {
         title: const Text('Registrar nuevo viaje'),
         actions: [ThemeToggle(size: 22), const SizedBox(width: 8)],
       ),
-      body: LayoutBuilder(
-        builder: (ctx, c) {
-          const estimatedMin = 690.0;
-          final needsScroll = c.maxHeight < estimatedMin;
-          final content = form;
-          return needsScroll
-              ? SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.viewInsetsOf(ctx).bottom + 8,
-                  ),
-                  child: content,
-                )
-              : content;
-        },
+      body: SafeArea(
+        // ListView = scroll siempre (S8+, Honor, iPhone, etc.)
+        child: ListView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: EdgeInsets.fromLTRB(
+            12,
+            12,
+            12,
+            12 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          children: [
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                // 👇 AQUÍ estaba el error: quité el `const`
+                constraints: BoxConstraints(maxWidth: fieldUi.maxWidth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // -----------------------------------------------------------------
+                    // ORDEN DE CAMPOS (fácil de mover/editar)
+                    // -----------------------------------------------------------------
+
+                    // 1) Origen / 2) Destino
+                    Adaptive2(
+                      breakpoint: fieldUi.breakpointTwoCols,
+                      gap: fieldUi.rowGap,
+                      left: DropdownCatalogField(
+                        ui: fieldUi,
+                        label: 'Origen',
+                        hint: 'Ciudad de origen',
+                        controller: _origenCtrl,
+                        icon: Icons.location_on_outlined,
+                        endpoint: '/api/catalogos/municipios',
+                        loader: _fetchCatalog,
+                      ),
+                      right: DropdownCatalogField(
+                        ui: fieldUi,
+                        label: 'Destino',
+                        hint: 'Ciudad de destino',
+                        controller: _destinoCtrl,
+                        icon: Icons.flag_outlined,
+                        endpoint: '/api/catalogos/municipios',
+                        loader: _fetchCatalog,
+                      ),
+                    ),
+                    SizedBox(height: fieldUi.sectionGap),
+
+                    // 3) Tipo de vehículo / 4) Tipo de carga
+                    Adaptive2(
+                      breakpoint: fieldUi.breakpointTwoCols,
+                      gap: fieldUi.rowGap,
+                      left: DropdownCatalogField(
+                        ui: fieldUi,
+                        label: 'Tipo vehículo',
+                        hint: 'Tracto, Sencillo, …',
+                        controller: _tipoVehiculoCtrl,
+                        icon: Icons.agriculture_outlined,
+                        endpoint: '/api/catalogos/tipos-vehiculo',
+                        loader: _fetchCatalog,
+                      ),
+                      right: DropdownCatalogField(
+                        ui: fieldUi,
+                        label: 'Tipo de carga',
+                        hint: 'Granel, Contenedor, etc.',
+                        controller: _tipoCargaCtrl,
+                        icon: Icons.inventory_2_outlined,
+                        endpoint: '/api/catalogos/tipos-carga',
+                        loader: _fetchCatalog,
+                      ),
+                    ),
+                    SizedBox(height: fieldUi.sectionGap),
+
+                    // 5) Valor / 6) Peso
+                    Adaptive2(
+                      breakpoint: fieldUi.breakpointTwoCols,
+                      gap: fieldUi.rowGap,
+                      left: AppTextField(
+                        label: 'Valor (COP)',
+                        hint: 'Ej: 10000000',
+                        controller: _valorCtrl,
+                        keyboardType: TextInputType.number,
+                        icon: Icons.attach_money,
+                      ),
+                      right: AppTextField(
+                        label: 'Peso (T)',
+                        hint: 'Ej: 32',
+                        controller: _pesoCtrl,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(decimal: true),
+                        icon: Icons.scale_outlined,
+                      ),
+                    ),
+                    SizedBox(height: fieldUi.rowGap),
+
+                    // 7) Empresa / 8) Comercial
+                    Adaptive2(
+                      breakpoint: fieldUi.breakpointTwoCols,
+                      gap: fieldUi.rowGap,
+                      left: AppTextField(
+                        label: 'Empresa',
+                        hint: 'Nombre de la empresa',
+                        controller: _empresaCtrl,
+                        icon: Icons.apartment_outlined,
+                      ),
+                      right: AppTextField(
+                        label: 'Comercial',
+                        hint: 'Nombre del comercial',
+                        controller: _comercialCtrl,
+                        icon: Icons.badge_outlined,
+                      ),
+                    ),
+                    SizedBox(height: fieldUi.rowGap),
+
+                    // 9) Contacto (a lo ancho)
+                    AppTextField(
+                      label: 'Contacto (teléfono)',
+                      hint: 'Cel del comercial',
+                      controller: _contactoCtrl,
+                      keyboardType: TextInputType.phone,
+                      icon: Icons.phone_outlined,
+                    ),
+                    SizedBox(height: fieldUi.rowGap),
+
+                    // 10) Observaciones (multilínea)
+                    AppMultilineField(
+                      label: 'Observaciones',
+                      controller: _obsCtrl,
+                      hint: 'Detalles adicionales…',
+                      minLines: 2,
+                      maxLines: 4,
+                    ),
+                    SizedBox(height: fieldUi.sectionGap),
+
+                    // -----------------------------------------------------------------
+                    // Tarjeta de "Tipo de viaje" + duración
+                    // -----------------------------------------------------------------
+                    Container(
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? cs.surfaceVariant.withOpacity(0.30)
+                            : cs.surfaceVariant.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tipo de viaje',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Row(
+                                children: [
+                                  Radio<bool>(
+                                    value: false,
+                                    groupValue: _premium,
+                                    onChanged: (_) =>
+                                        setState(() => _premium = false),
+                                    visualDensity: VisualDensity.compact,
+                                  ),
+                                  const Text('Viaje estándar'),
+                                ],
+                              ),
+                              const SizedBox(width: 10),
+                              Opacity(
+                                opacity: 0.45,
+                                child: Row(
+                                  children: [
+                                    Radio<bool>(
+                                      value: true,
+                                      groupValue: _premium,
+                                      onChanged: null,
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    const Text('Viaje premium'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'El viaje se borrará automáticamente en:',
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          _DurationChips(
+                            value: _durationHours,
+                            onChanged: (v) => setState(() {
+                              _durationHours = v;
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 14),
+
+                    // -----------------------------------------------------------------
+                    // Botones inferiores
+                    // -----------------------------------------------------------------
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Cancelar'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _guardar,
+                            icon: const Icon(Icons.check_circle_outline),
+                            label: const Text('¡ Publicar !'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-/* -------------------- fila 2 columnas -------------------- */
-class _Row2 extends StatelessWidget {
-  const _Row2({required this.left, required this.right});
+// -----------------------------------------------------------------------------
+// Config de UI para inputs (un solo lugar para tunear todo el look)
+// -----------------------------------------------------------------------------
+class FieldUi {
+  final double iconSize;
+  final double prefixIconMinWidth;
+  final EdgeInsets contentPadding;
+  final double suffixIconBox;
+  final double radius;
+  final double labelGap;
+  final double rowGap;
+  final double sectionGap;
+  final double maxWidth;
+  final double breakpointTwoCols;
+
+  const FieldUi({
+    required this.iconSize,
+    required this.prefixIconMinWidth,
+    required this.contentPadding,
+    required this.suffixIconBox,
+    required this.radius,
+    required this.labelGap,
+    required this.rowGap,
+    required this.sectionGap,
+    required this.maxWidth,
+    required this.breakpointTwoCols,
+  });
+}
+
+// -----------------------------------------------------------------------------
+// Layout 2 columnas → 1 columna según ancho
+// -----------------------------------------------------------------------------
+class Adaptive2 extends StatelessWidget {
+  const Adaptive2({
+    super.key,
+    required this.left,
+    required this.right,
+    required this.breakpoint,
+    required this.gap,
+  });
 
   final Widget left;
   final Widget right;
+  final double breakpoint;
+  final double gap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: left),
-        const SizedBox(width: 10),
-        Expanded(child: right),
-      ],
+    return LayoutBuilder(
+      builder: (_, c) {
+        final oneCol = c.maxWidth < breakpoint;
+
+        if (oneCol) {
+          return Column(
+            children: [
+              left,
+              SizedBox(height: gap),
+              right,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: left),
+            SizedBox(width: gap),
+            Expanded(child: right),
+          ],
+        );
+      },
     );
   }
 }
 
-/* -------------------- chips duración -------------------- */
+// -----------------------------------------------------------------------------
+// Chips de duración
+// -----------------------------------------------------------------------------
 class _DurationChips extends StatelessWidget {
   const _DurationChips({required this.value, required this.onChanged});
 
@@ -595,8 +809,8 @@ class _DurationChips extends StatelessWidget {
     }
 
     return Wrap(
-      spacing: 6,
-      runSpacing: 4,
+      spacing: 8,
+      runSpacing: 8,
       children: [
         chip('6 horas', 6),
         chip('12 horas', 12),
@@ -609,14 +823,13 @@ class _DurationChips extends StatelessWidget {
   }
 }
 
-/* -------------------- dropdown en cascada -------------------- */
-// (se mantiene igual, no lo toqué)
-
-
-/* -------------------- dropdown en cascada -------------------- */
+// -----------------------------------------------------------------------------
+// Dropdown con catálogo (mismo look que AppTextField)
+// -----------------------------------------------------------------------------
 class DropdownCatalogField extends StatefulWidget {
   const DropdownCatalogField({
     super.key,
+    required this.ui,
     required this.label,
     required this.hint,
     required this.controller,
@@ -625,6 +838,7 @@ class DropdownCatalogField extends StatefulWidget {
     required this.loader,
   });
 
+  final FieldUi ui;
   final String label;
   final String hint;
   final TextEditingController controller;
@@ -637,183 +851,218 @@ class DropdownCatalogField extends StatefulWidget {
 }
 
 class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
-  final _link = LayerLink();
-  OverlayEntry? _entry;
+  final FocusNode _focusNode = FocusNode();
+  final GlobalKey _fieldKey = GlobalKey(); // para capturar ancho real del campo
 
   List<String>? _items;
-  List<String> _filtered = const [];
-  String? _error;
   bool _loading = false;
-
-  TextEditingController get _textCtrl => widget.controller;
+  String? _error;
+  bool _showAll = false;
 
   @override
   void initState() {
     super.initState();
-    _textCtrl.addListener(_onTyped);
+
+    // Si el user empieza a escribir, deja de forzar showAll
+    widget.controller.addListener(() {
+      if (_showAll && _focusNode.hasFocus) {
+        setState(() => _showAll = false);
+      }
+    });
+
+    // Al ganar foco, carga catálogo si hace falta
+    _focusNode.addListener(() {
+      if (_focusNode.hasFocus) _ensureData();
+    });
   }
 
   @override
   void dispose() {
-    _removeEntry();
-    _textCtrl.removeListener(_onTyped);
+    _focusNode.dispose();
     super.dispose();
-  }
-
-  void _onTyped() {
-    if (_items == null) return;
-    final q = _textCtrl.text.trim().toLowerCase();
-    setState(() {
-      _filtered = q.isEmpty
-          ? List<String>.from(_items!)
-          : _items!.where((e) => e.toLowerCase().contains(q)).toList();
-    });
-    _entry?.markNeedsBuild();
   }
 
   Future<void> _ensureData() async {
     if (_items != null || _loading) return;
+
     setState(() {
       _loading = true;
       _error = null;
     });
+
     try {
       final data = await widget.loader(widget.endpoint);
-      _items = data;
-      _filtered = List<String>.from(data);
+      if (!mounted) return;
+      setState(() => _items = data);
     } catch (e) {
-      _error = e.toString();
+      if (!mounted) return;
+      setState(() => _error = e.toString());
       _items = const [];
-      _filtered = const [];
     } finally {
-      _loading = false;
-      if (mounted) setState(() {});
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _open() async {
-    await _ensureData();
-    _removeEntry();
+  Iterable<String> _filterOptions(TextEditingValue value) {
+    final items = _items ?? const <String>[];
+    if (_loading || _error != null) return const Iterable<String>.empty();
 
-    _entry = OverlayEntry(builder: (context) {
-      final maxWidth =
-          (context.findAncestorRenderObjectOfType<RenderBox>())?.size.width ??
-              320;
+    final q = value.text.trim().toLowerCase();
 
-      return Positioned.fill(
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: _removeEntry,
-          child: CompositedTransformFollower(
-            link: _link,
-            showWhenUnlinked: false,
-            offset: const Offset(0, 44),
-            child: Material(
-              elevation: 6,
-              borderRadius: BorderRadius.circular(10),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: maxWidth,
-                  minWidth: maxWidth,
-                  maxHeight: 260,
-                ),
-                child: _popupBody(),
-              ),
-            ),
-          ),
-        ),
-      );
-    });
-
-    Overlay.of(context, rootOverlay: true).insert(_entry!);
+    if (_showAll || q.isEmpty) return items.take(40);
+    return items.where((e) => e.toLowerCase().contains(q)).take(40);
   }
 
-  Widget _popupBody() {
-    if (_loading) {
-      return const SizedBox(
-        height: 120,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (_error != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            'Error: $_error',
-            style: const TextStyle(color: Colors.red),
-          ),
-        ),
-      );
-    }
-    if ((_items?.isEmpty ?? true)) {
-      return const SizedBox(
-        height: 80,
-        child: Center(child: Text('Sin resultados')),
-      );
-    }
-
-    return ListView.separated(
-      shrinkWrap: true,
-      padding: EdgeInsets.zero,
-      itemCount: _filtered.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (ctx, i) {
-        final opt = _filtered[i];
-        return ListTile(
-          dense: true,
-          title: Text(opt),
-          onTap: () {
-            _textCtrl.text = opt;
-            _textCtrl.selection =
-                TextSelection.collapsed(offset: opt.length);
-            _removeEntry();
-          },
-        );
-      },
-    );
-  }
-
-  void _removeEntry() {
-    _entry?.remove();
-    _entry = null;
+  // Ancho actual del TextField para que el overlay no desborde
+  double _fieldWidth() {
+    final ctx = _fieldKey.currentContext;
+    if (ctx == null) return 260;
+    final r = ctx.findRenderObject();
+    if (r is RenderBox && r.hasSize) return r.size.width;
+    return 260;
   }
 
   @override
   Widget build(BuildContext context) {
-    return CompositedTransformTarget(
-      link: _link,
-      child: Stack(
-        alignment: Alignment.centerRight,
-        children: [
-          AppTextField(
-            label: widget.label,
-            hint: widget.hint,
-            controller: _textCtrl,
-            icon: widget.icon,
-            readOnly: false,
-            onTap: _open,
-            onChanged: (_) => _entry?.markNeedsBuild(),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: Icon(Icons.arrow_drop_down_rounded, size: 22),
-          ),
-          Positioned.fill(
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: 36,
-                height: 40,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: _open,
+    final theme = Theme.of(context);
+    final ui = widget.ui;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // MISMO label que AppTextField
+        Text(widget.label, style: theme.textTheme.labelLarge),
+        SizedBox(height: ui.labelGap),
+
+        RawAutocomplete<String>(
+          textEditingController: widget.controller,
+          focusNode: _focusNode,
+          displayStringForOption: (o) => o,
+          optionsBuilder: _filterOptions,
+          onSelected: (opt) {
+            widget.controller.text = opt;
+            widget.controller.selection =
+                TextSelection.collapsed(offset: opt.length);
+
+            // Mantener foco => evita bugs de teclado en algunos Android
+            Future.microtask(() {
+              if (_focusNode.canRequestFocus) _focusNode.requestFocus();
+            });
+          },
+          fieldViewBuilder: (ctx, textCtrl, focusNode, onFieldSubmitted) {
+            return KeyedSubtree(
+              key: _fieldKey,
+              child: TextField(
+                controller: textCtrl,
+                focusNode: focusNode,
+                textInputAction: TextInputAction.next,
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: widget.hint,
+
+                  // Icono con tamaño fijo y caja fija => spacing consistente
+                  prefixIcon: Icon(widget.icon, size: ui.iconSize),
+                  prefixIconConstraints: BoxConstraints(
+                    minWidth: ui.prefixIconMinWidth,
+                    minHeight: ui.prefixIconMinWidth,
+                  ),
+
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(ui.radius),
+                  ),
+                  contentPadding: ui.contentPadding,
+
+                  // Suffix consistente (sin padding raro)
+                  suffixIcon: SizedBox(
+                    width: ui.suffixIconBox,
+                    height: ui.suffixIconBox,
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.arrow_drop_down_rounded),
+                      onPressed: () async {
+                        await _ensureData();
+                        if (focusNode.canRequestFocus) {
+                          focusNode.requestFocus();
+                        }
+                        setState(() => _showAll = true);
+
+                        final cur = textCtrl.text;
+                        textCtrl.value = TextEditingValue(
+                          text: cur,
+                          selection:
+                              TextSelection.collapsed(offset: cur.length),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                onTap: () => setState(() => _showAll = true),
+              ),
+            );
+          },
+          optionsViewBuilder: (ctx, onSelected, options) {
+            final w = _fieldWidth();
+
+            Widget child;
+            if (_loading) {
+              child = const SizedBox(
+                height: 120,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            } else if (_error != null) {
+              child = Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(
+                  'Error: $_error',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              );
+            } else if ((_items?.isEmpty ?? true)) {
+              child = const SizedBox(
+                height: 80,
+                child: Center(child: Text('Sin resultados')),
+              );
+            } else {
+              final list = options.toList();
+              child = ListView.separated(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: list.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, i) {
+                  final opt = list[i];
+                  return ListTile(
+                    dense: true,
+                    title: Text(
+                      opt,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () => onSelected(opt),
+                  );
+                },
+              );
+            }
+
+            // Overlay del ancho exacto del campo (no overflow)
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(10),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minWidth: w,
+                    maxWidth: w,
+                    maxHeight: 280,
+                  ),
+                  child: child,
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        ),
+      ],
     );
   }
 }

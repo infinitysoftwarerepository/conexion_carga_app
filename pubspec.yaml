@@ -11,6 +11,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  share_plus: ^10.0.0      # o la versión estable que tengas
+  # image_gallery_saver: ^2.0.0
 
   # ======= TUS DEPENDECIAS =======
   shared_preferences: ^2.2.2
@@ -20,6 +22,8 @@ dependencies:
   google_fonts: ^6.2.1
   cupertino_icons: ^1.0.8
   url_launcher: ^6.3.0
+  open_filex: ^4.7.0
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_launcher_icons: any
@@ -31,20 +35,13 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/logo_conexion_carga_V1.jpg
-    - assets/images/logo_conexion_carga_V1.png
-    - assets/images/banner_llantas_30_off.png
-    - assets/images/banner_seguros_20.png
-    - assets/images/logo_conexion_carga_remasterizado_V1.png
-    - assets/images/logo_conexion_carga_oficial_cliente_V1.png
-    - assets/images/ad_start_full.png
-    - assets/icons/whatsapp.png
-    - assets/icons/app_icon.png
-    - assets/docs/politica_privacidad_conexion_carga.pdf
-    - assets/docs/terminos_uso_conexion_carga.pdf
+    - assets/images/
+    - assets/icons/
+    - assets/docs/
+
     
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/icons/app_icon.png"
+  image_path: "assets/icons/app_icon_V2.png"
  

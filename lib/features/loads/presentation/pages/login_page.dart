@@ -13,6 +13,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 // 🔐 Llamadas al backend (login)
 import 'package:conexion_carga_app/features/auth/data/auth_api.dart';
 
+// 👇 NUEVO: pantalla de “Olvidé mi contraseña”
+import 'package:conexion_carga_app/features/loads/presentation/pages/forgot_password_page.dart';
+
 /// Pantalla de inicio de sesión:
 /// - Email + Password con validación de forma.
 /// - Llama a AuthApi.login() y, si es OK, cierra la pantalla con `Navigator.pop(true)`.
@@ -265,7 +268,31 @@ class _LoginPageState extends State<LoginPage> {
                               : const SizedBox.shrink(key: ValueKey('pass_ok')),
                         ),
 
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 8),
+
+                        // 👇 NUEVO: enlace “¿Olvidaste tu contraseña?”
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const ForgotPasswordPage(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              '¿Olvidaste tu contraseña?',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 14),
 
                         // ===== ENVIAR
                         SizedBox(

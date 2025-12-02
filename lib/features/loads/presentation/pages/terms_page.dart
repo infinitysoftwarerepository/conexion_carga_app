@@ -1,6 +1,11 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_filex/open_filex.dart';
+import 'dart:io';
 
 // 🌗 Lunita (toggle claro/oscuro)
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
@@ -27,13 +32,37 @@ class _TermsPageState extends State<TermsPage> {
   }
 
   // Lanzar PDFs dentro de assets
-  Future<void> _openPdf(String assetPath) async {
-    final uri = Uri.parse(assetPath);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('No se pudo abrir el documento.')));
+Future<void> _openPdf(String assetPath) async {
+  try {
+    // 🌐 Si es Web ➜ abre el PDF directo desde assets
+    if (kIsWeb) {
+      final cleanPath = assetPath.replaceFirst("assets/", "");
+      final url = "/assets/$cleanPath";
+
+      if (!await launchUrl(Uri.parse(url))) {
+        throw Exception("No se pudo abrir el PDF en Web.");
+      }
+      return;
     }
+
+    // 📱 Si es Android/iOS ➜ usar filesystem temporal y OpenFilex
+    final byteData = await rootBundle.load(assetPath);
+
+    final tempDir = await getTemporaryDirectory();
+    final tempPath = '${tempDir.path}/${assetPath.split('/').last}';
+
+    final file = File(tempPath);
+    await file.writeAsBytes(byteData.buffer.asUint8List(), flush: true);
+
+    await OpenFilex.open(file.path);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('No se pudo abrir el documento: $e')),
+    );
   }
+}
+
+
 
   // Lanzar correo
   Future<void> _sendEmail() async {
@@ -51,7 +80,8 @@ class _TermsPageState extends State<TermsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Términos y Políticas'),
+        title: const Text('Términos y condiciones de uso', 
+        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700 )),
         centerTitle: true,
         actions: [
           ThemeToggle(color: cs.onSurface, size: 22),
@@ -71,7 +101,7 @@ class _TermsPageState extends State<TermsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '1. Introducción',
+                          'Introducción',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -89,7 +119,7 @@ class _TermsPageState extends State<TermsPage> {
 
                         // 2. Uso de la aplicación
                         Text(
-                          '2. Uso de la aplicación',
+                          'Uso de la aplicación',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -126,7 +156,7 @@ class _TermsPageState extends State<TermsPage> {
 
                         // 3. Datos y privacidad
                         Text(
-                          '3. Datos personales y privacidad',
+                          'Política de privacidad',
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
@@ -138,10 +168,17 @@ class _TermsPageState extends State<TermsPage> {
                             children: [
                               const TextSpan(
                                 text:
-                                    'La información personal que proporciones (por ejemplo, correo electrónico '
-                                    'e identificación) será tratada conforme a la normativa aplicable y con la '
-                                    'finalidad de prestarte el servicio. No compartimos tus datos con terceros '
-                                    'sin tu autorización, salvo obligación legal.\n\n',
+                                
+                                    'CONEXIÓN CARGA es el responsable del tratamiento de sus datos. La recolección de esta información se '
+                                    'llevará a cabo con la participación activa de las personas que se registren en nuestro sistema. La '
+                                    'información recopilada se utilizará exclusivamente con fines comerciales, tales como: el envío de '
+                                    'promociones y ofertas personalizadas, la promoción de nuestros productos y servicios, así como los de '
+                                    'terceros, la difusión de nuevos servicios en el sector del transporte y la entrega de información relevante '
+                                    'relacionada con este sector. Esto también incluye el desarrollo de aplicaciones o programas dirigidos a '
+                                    'mejorar el ámbito del transporte. '
+                                    'Los titulares de los datos tienen derecho a conocer, actualizar y rectificar su información personal, así '
+                                    'como a revocar la autorización otorgada y solicitar la eliminación de sus datos personales. Para más '
+                                    'detalles, consulte nuestra Política de Privacidad..\n\n',
                               ),
                               TextSpan(
                                 text: 'Ver política de privacidad',
@@ -160,79 +197,7 @@ class _TermsPageState extends State<TermsPage> {
                           ),
                         ),
 
-                        const SizedBox(height: 16),
 
-                        Text(
-                          '4. Autorización',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Al aceptar los términos de condiciones y la política de privacidad, '
-                          'también autorizo a Conexión Carga para ser consultado en las centrales '
-                          'de riesgo públicas y privadas, como también en las listas de restricción internacional',
-                        ),
-                        const SizedBox(height: 16),
-
-                        Text(
-                          '5. Propiedad intelectual',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Los contenidos, marcas y elementos distintivos de la aplicación pertenecen '
-                          'a sus respectivos titulares. No está permitida su reproducción o uso sin '
-                          'autorización.',
-                        ),
-                        const SizedBox(height: 16),
-
-                        Text(
-                          '6. Modificaciones',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Podremos actualizar estos Términos y Políticas en cualquier momento. '
-                          'Las modificaciones se publicarán en esta sección.',
-                        ),
-                        const SizedBox(height: 16),
-
-                        Text(
-                          '7. Contacto',
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Email clickeable
-                        RichText(
-                          text: TextSpan(
-                            style: theme.textTheme.bodyMedium,
-                            children: [
-                              const TextSpan(
-                                text:
-                                    'Si tienes dudas sobre estos términos o el manejo de tus datos, '
-                                    'ponte en contacto con el correo de contacto:\n\n',
-                              ),
-                              TextSpan(
-                                text: 'conexioncarga@gmail.com',
-                                style: const TextStyle(
-                                  color: Colors.blue,
-                                  decoration: TextDecoration.underline,
-                                ),
-                                recognizer: TapGestureRecognizer()
-                                  ..onTap = _sendEmail,
-                              ),
-                            ],
-                          ),
-                        ),
 
                         const SizedBox(height: 24),
                       ],

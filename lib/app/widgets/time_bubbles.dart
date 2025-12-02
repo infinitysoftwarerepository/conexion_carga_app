@@ -59,7 +59,11 @@ class TimeBubble extends StatelessWidget {
 class TimeBubbleRowSmall extends StatelessWidget {
   final Duration remaining;
 
-  const TimeBubbleRowSmall({super.key, required this.remaining});
+  const TimeBubbleRowSmall({
+    super.key,
+    required this.remaining,
+  });
+
 
   @override
   Widget build(BuildContext context) {

@@ -12,6 +12,7 @@ class AuthUser {
   final String firstName;
   final String lastName;
   final bool isPremium;
+    final bool isDriver;     // 👈 NUEVO
   final int points;
 
   const AuthUser({
@@ -19,7 +20,9 @@ class AuthUser {
     required this.email,
     required this.firstName,
     required this.lastName,
+    required this.isDriver,   // 👈 NUEVO
     required this.isPremium,
+    
     required this.points,
   });
 
@@ -30,17 +33,22 @@ class AuthUser {
       firstName: (j['first_name'] ?? j['firstName'] ?? '').toString(),
       lastName: (j['last_name'] ?? j['lastName'] ?? '').toString(),
       isPremium: j['is_premium'] == true || j['isPremium'] == true,
+      isDriver: j['is_driver'] == true || j['isDriver'] == true,  // 👈 NUEVO
+
       points: (j['points'] is int)
           ? j['points'] as int
           : int.tryParse('${j['points'] ?? 0}') ?? 0,
     );
   }
 
+  get companyName => null;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'email': email,
         'first_name': firstName,
         'last_name': lastName,
+        'is_driver': isDriver,     // 👈 NUEVO
         'is_premium': isPremium,
         'points': points,
       };

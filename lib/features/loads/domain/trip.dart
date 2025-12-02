@@ -8,6 +8,7 @@ class Trip {
   final String cargoType;  // tipo_carga
   final String vehicle;    // tipo_vehiculo
   final num? price;        // valor (tarifa)
+  final String? empresa;
   final String? estado;
   final bool activo;
   final String? comercialId;
@@ -29,6 +30,7 @@ class Trip {
     required this.cargoType,
     required this.vehicle,
     this.price,
+    this.empresa,
     this.estado,
     this.activo = true,
     this.comercialId,
@@ -142,6 +144,7 @@ class Trip {
       cargoType: (json['tipo_carga'] ?? json['cargoType'] ?? '').toString(),
       vehicle: (json['tipo_vehiculo'] ?? json['vehicle'] ?? '').toString(),
       price: _toNum(json['valor'] ?? json['price'] ?? json['tarifa']),
+      empresa: (json['empresa'] ?? json['company'] ?? '').toString(),
       estado: (json['estado'] ?? json['status'])?.toString(),
       activo:
           ((json['activo'] ?? true).toString().toLowerCase() == 'true'),
@@ -163,6 +166,7 @@ class Trip {
         'tipo_carga': cargoType,
         'tipo_vehiculo': vehicle,
         'valor': price,
+        'empresa': empresa,
         'estado': estado,
         'activo': activo,
         'comercial_id': comercialId,

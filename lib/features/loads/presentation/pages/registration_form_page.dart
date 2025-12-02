@@ -15,17 +15,19 @@ import 'package:conexion_carga_app/features/auth/data/models/user_out.dart';
 
 // API de verificación y pantalla de verificación
 import 'package:conexion_carga_app/features/auth/data/verification_api.dart';
-import 'package:conexion_carga_app/features/auth/presentation/verify_code_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/verify_code_page.dart';
 
 /// ---------------- Ocupación ----------------
 class OccupationOption {
   final String id;
   final String label;
   final bool requiresCompany;
+  final bool isDriver;
   const OccupationOption({
     required this.id,
     required this.label,
     required this.requiresCompany,
+    this.isDriver = false, 
   });
 }
 
@@ -40,6 +42,13 @@ const kOccupationOptions = <OccupationOption>[
     label: 'Soy independiente',
     requiresCompany: false,
   ),
+  OccupationOption(
+    id: 'driver',
+    label: 'Soy conductor',       // 👈 NUEVA OPCIÓN
+    requiresCompany: false,
+    isDriver: true,               // 👈 esta opción marca conductor
+  ),
+
 ];
 
 /// ---------------- Tipo de documento (Colombia) ----------------
@@ -88,6 +97,22 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
   bool _obscureConfirm = true;
   bool _acepto = false;
   bool _isLoading = false;
+    // Valida que la contraseña sea fuerte:
+  // - mínimo 8 caracteres
+  // - al menos 1 letra
+  // - al menos 1 número
+  // - al menos 1 símbolo
+  bool _isStrongPassword(String value) {
+    final hasMinLength = value.length >= 8;
+    final hasLetter    = RegExp(r'[A-Za-z]').hasMatch(value);
+    final hasNumber    = RegExp(r'\d').hasMatch(value);
+
+    // 👇 al menos un símbolo común
+    final hasSymbol    = RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-]').hasMatch(value);
+
+    return hasMinLength && hasLetter && hasNumber && hasSymbol;
+  }
+
 
   bool get _needsCompany =>
       _selectedOccupation != null && _selectedOccupation!.requiresCompany;
@@ -104,6 +129,9 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     _referrerEmailCtrl.dispose();
     super.dispose();
   }
+
+
+
 
   Future<void> _continuar() async {
     if (_isLoading) return;
@@ -129,9 +157,35 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
       return;
     }
 
+        // Validación de contraseña fuerte
+        final pass = _passCtrl.text;
+        final confirm = _confirmCtrl.text;
+
+        if (!_isStrongPassword(pass)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'La contraseña debe tener mínimo 8 caracteres, incluir letras, números y al menos un símbolo.',
+              ),
+            ),
+          );
+          return;
+        }
+
+        if (pass != confirm) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Las contraseñas no coinciden.'),
+            ),
+          );
+          return;
+        }
+
+
     setState(() => _isLoading = true);
     try {
       final isCompany = _selectedOccupation?.requiresCompany == true;
+      final isDriver  = _selectedOccupation?.isDriver == true;
 
       final UserOut user = await _controller.submit(
         context: context,
@@ -140,6 +194,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
         lastName: _apellidosCtrl.text.trim(),
         phone: _numIdCtrl.text.trim(),
         isCompany: isCompany,
+        isDriver: isDriver,   
         companyName: _companyCtrl.text.trim(),
         password: _passCtrl.text,
         confirmPassword: _confirmCtrl.text,
@@ -165,7 +220,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
       final msg = e.toString().replaceFirst('Exception: ', '');
 
       // Si el backend dijo 400 por email ya registrado, referrer inválido, etc.
-      if (msg.toLowerCase().contains('email already registered')) {
+      if (msg.toLowerCase().contains('El usuario ya se encuentra registrado!')) {
         // (opcional) intentamos reenviar para ese email por si caducó
         try { await _verificationApi.requestEmailCode(_emailCtrl.text.trim()); } catch (_) {}
         if (!mounted) return;
@@ -394,8 +449,8 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
             const SizedBox(height: 12),
 
             AppTextField(
-              label: 'Contraseña*',
-              hint: 'Mínimo 8 caracteres',
+              label: 'Contraseña* (mínimo 8 caracteres, letras, números y un símbolo)',
+              hint: 'Ej: Clave123!',
               controller: _passCtrl,
               icon: Icons.lock_outline,
               obscureText: _obscurePass,
@@ -406,6 +461,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
               ),
               textInputAction: TextInputAction.next,
             ),
+
             const SizedBox(height: 12),
 
             AppTextField(
@@ -441,7 +497,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                   onChanged: (v) => setState(() => _acepto = v ?? false),
                 ),
                 const Expanded(
-                  child: Text('Acepto Términos y Políticas de Privacidad.'),
+                  child: Text('Al registrarte, aceptas nuestros Términos y Condiciones de Uso y la Política de Privacidad'),
                 ),
               ],
             ),

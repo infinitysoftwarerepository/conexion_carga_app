@@ -10,7 +10,7 @@ class NewActionFab extends StatelessWidget {
     this.icon,
     this.backgroundColor,   // opcional: color de fondo del botón
     this.foregroundColor,   // opcional: color del texto
-    this.iconColor,         // 👈 NUEVO: color SOLO del ícono
+    this.iconColor,          // 👈 NUEVO: color SOLO del ícono
   });
 
   final String label;

@@ -13,12 +13,13 @@ import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 class BottomBannerSection extends StatelessWidget {
   const BottomBannerSection({
     super.key,
-    this.prefixText = '¡Apoya este proyecto! Ahorros Bancolombia: ',
+    this.prefixText = '¡Apoya este proyecto! Llave Bre-B: ',
     required this.donationNumber,
+    this.onTapDonation,
     this.carouselImages = const [
       'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
     ],
-    this.carouselHeight = 140,
+    this.carouselHeight = 140, 
   });
 
   /// Texto antes del número (lo dejamos editable por si un día cambias banco o mensaje).
@@ -26,6 +27,8 @@ class BottomBannerSection extends StatelessWidget {
 
   /// 📞 El número que se pintará como enlace y se copiará al tocarlo.
   final String donationNumber;
+  final VoidCallback? onTapDonation;
+
 
   /// Imágenes del carrusel inferior.
   final List<String> carouselImages;
@@ -67,16 +70,23 @@ class BottomBannerSection extends StatelessWidget {
                 // y lo hacemos “plano” (sin padding extra) para que parezca un link.
                 TextButton(
                   onPressed: () async {
+                    // Si desde afuera nos mandan una acción, la usamos (abrir DonationPage)
+                    if (onTapDonation != null) {
+                      onTapDonation!();
+                      return;
+                    }
+
+                    // Fallback: si no hay callback, sigue copiando al portapapeles
                     await Clipboard.setData(ClipboardData(text: donationNumber));
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(
-                          'Número copiado: $donationNumber',
-  
-                        )),
+                        SnackBar(
+                          content: Text('Número copiado: $donationNumber'),
+                        ),
                       );
                     }
                   },
+
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,

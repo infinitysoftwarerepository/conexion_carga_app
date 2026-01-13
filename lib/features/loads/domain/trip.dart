@@ -17,6 +17,7 @@ class Trip {
   final String? comercial;
   final String? contacto;
   final String? conductor;
+  final String? observaciones;  // 👈 NUEVO
 
   // Para manejar vencimiento
   final DateTime? createdAt;
@@ -37,6 +38,7 @@ class Trip {
     this.comercial,
     this.contacto,
     this.conductor,
+    this.observaciones,  // 👈 NUEVO
     this.createdAt,
     this.durationHours,
   });
@@ -68,14 +70,14 @@ class Trip {
 
 
   factory Trip.fromJson(Map<String, dynamic> json) {
-    double? _toDouble(dynamic v) {
+    double? toDouble(dynamic v) {
       if (v == null) return null;
       if (v is num) return v.toDouble();
       if (v is String) return double.tryParse(v.replaceAll(',', '.'));
       return null;
     }
 
-    num? _toNum(dynamic v) {
+    num? toNum(dynamic v) {
       if (v == null) return null;
       if (v is num) return v;
       if (v is String) {
@@ -87,7 +89,7 @@ class Trip {
       return null;
     }
 
-    DateTime? _toDateTime(dynamic v) {
+    DateTime? toDateTime(dynamic v) {
       if (v == null) return null;
       if (v is DateTime) return v;
       if (v is String) {
@@ -96,7 +98,7 @@ class Trip {
       return null;
     }
 
-    int? _parseDurationHours(dynamic raw) {
+    int? parseDurationHours(dynamic raw) {
       if (raw == null) return null;
       if (raw is int) return raw;
       if (raw is num) return raw.toInt();
@@ -140,10 +142,10 @@ class Trip {
       id: (json['id'] ?? json['uuid'] ?? '').toString(),
       origin: (json['origen'] ?? json['origin'] ?? '').toString(),
       destination: (json['destino'] ?? json['destination'] ?? '').toString(),
-      tons: _toDouble(json['peso'] ?? json['tons'] ?? json['tonelaje']),
+      tons: toDouble(json['peso'] ?? json['tons'] ?? json['tonelaje']),
       cargoType: (json['tipo_carga'] ?? json['cargoType'] ?? '').toString(),
       vehicle: (json['tipo_vehiculo'] ?? json['vehicle'] ?? '').toString(),
-      price: _toNum(json['valor'] ?? json['price'] ?? json['tarifa']),
+      price: toNum(json['valor'] ?? json['price'] ?? json['tarifa']),
       empresa: (json['empresa'] ?? json['company'] ?? '').toString(),
       estado: (json['estado'] ?? json['status'])?.toString(),
       activo:
@@ -153,8 +155,9 @@ class Trip {
       comercial: (json['comercial'] ?? '').toString(),
       contacto: (json['contacto'] ?? '').toString(),
       conductor: (json['conductor'] ?? json['driver'] ?? '').toString(),
-      createdAt: _toDateTime(json['created_at']),
-      durationHours: _parseDurationHours(durationRaw),
+      observaciones: (json['observaciones'] ?? json['obs'] ?? '').toString(), // 👈 NUEVO
+      createdAt: toDateTime(json['created_at']),
+      durationHours: parseDurationHours(durationRaw),
     );
   }
 
@@ -173,6 +176,7 @@ class Trip {
         'comercial': comercial,
         'contacto': contacto,
         'conductor': conductor,
+        'observaciones': observaciones, // 👈 NUEVO
         'created_at': createdAt?.toIso8601String(),
         'duration_hours': durationHours,
       };

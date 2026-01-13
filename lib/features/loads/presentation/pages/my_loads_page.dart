@@ -9,6 +9,10 @@ import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/trip_detail_page.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
+import 'package:conexion_carga_app/app/theme/theme_conection.dart'; // 👈 NUEVO
+import 'package:conexion_carga_app/app/widgets/clean_filter.dart';  // 👈 NUEVO
+import 'package:conexion_carga_app/app/widgets/theme_toggle.dart'; // 👈 NUEVO
+
 
 class MyLoadsPage extends StatefulWidget {
   const MyLoadsPage({super.key});
@@ -43,6 +47,52 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
       _future = LoadsApi.fetchMine(status: 'all');
     });
   }
+
+    // ✅ NUEVO: saber si hay algo activo (búsqueda o filtros)
+  bool get _hasActiveSearchOrFilters =>
+      _searchQuery.trim().isNotEmpty || !_filters.isEmpty;
+
+  // ✅ NUEVO: limpiar TODO (lupita + 3 rayitas)
+  void _clearSearchAndFilters() {
+    if (!_hasActiveSearchOrFilters) return;
+    setState(() {
+      _searchQuery = '';
+      _filters = _TripFilters();
+    });
+  }
+
+  // ✅ NUEVO: “botón” verde centrado SIN overflow
+  Widget _greenCenterPill(String text) {
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final bg = isLight ? kGreenStrong : kDeepDarkGreen;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              softWrap: true,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
 
   // ------------------- BÚSQUEDA -------------------
   void _openSearchSheet() {
@@ -151,7 +201,7 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
               (local.maxPrice ?? priceMax).toDouble(),
             );
 
-            String _fmtNum(num v) => v.round().toString();
+            String fmtNum(num v) => v.round().toString();
 
             return Padding(
               padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottom),
@@ -191,12 +241,7 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
                       onChanged: (v) =>
                           setModalState(() => local.vehicle = v.trim()),
                     ),
-                    _FilterTextField(
-                      label: 'Estado',
-                      initialValue: local.estado,
-                      onChanged: (v) =>
-                          setModalState(() => local.estado = v.trim()),
-                    ),
+                    
                     _FilterTextField(
                       label: 'Comercial',
                       initialValue: local.comercial,
@@ -224,8 +269,8 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
                         max: max(tonsMax, tonsMin + 1),
                         divisions: 20,
                         labels: RangeLabels(
-                          _fmtNum(tonsRange.start),
-                          _fmtNum(tonsRange.end),
+                          fmtNum(tonsRange.start),
+                          fmtNum(tonsRange.end),
                         ),
                         onChanged: (values) {
                           setModalState(() {
@@ -239,7 +284,7 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
                     if (priceValues.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       const Text(
-                        'Valor del viaje (COP)',
+                        'Valor del flete (COP)',
                         style: TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600),
                       ),
@@ -249,8 +294,8 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
                         max: max(priceMax, priceMin + 1),
                         divisions: 20,
                         labels: RangeLabels(
-                          _fmtNum(priceRange.start),
-                          _fmtNum(priceRange.end),
+                          fmtNum(priceRange.start),
+                          fmtNum(priceRange.end),
                         ),
                         onChanged: (values) {
                           setModalState(() {
@@ -372,19 +417,57 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis viajes'),
-        actions: [
-          GlyphSearch(
-            onTap: _openSearchSheet,
-            tooltip: 'Buscar',
-          ),
-          GlyphFilter(
-            size: 20,
-            onTap: _openFiltersSheet,
-          ),
-          const SizedBox(width: 4),
-        ],
+      title: const Text('Mis viajes'),
+
+      // ✅ Para controlar nosotros flecha + lupita a la izquierda
+      automaticallyImplyLeading: false,
+
+      // ✅ Más ancho porque ponemos 2 íconos (flecha + lupa)
+      leadingWidth: 104,
+
+      leading: Builder(
+        builder: (context) {
+          final isLight = Theme.of(context).brightness == Brightness.light;
+          final iconColor = isLight ? Colors.black87 : Colors.white;
+
+          final canPop = Navigator.of(context).canPop();
+
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ✅ Flecha SOLO si esta pantalla fue abierta con Navigator.push
+              if (canPop)
+                IconButton(
+                  tooltip: 'Volver',
+                  icon: Icon(Icons.arrow_back, color: iconColor),
+                  onPressed: () => Navigator.of(context).maybePop(),
+                )
+              else
+                const SizedBox(width: 8),
+
+              // ✅ Lupita al lado de la flecha (izquierda)
+              GlyphSearch(
+                onTap: _openSearchSheet,
+                tooltip: 'Buscar',
+                color: iconColor,
+                padding: EdgeInsets.zero,
+              ),
+            ],
+          );
+        },
       ),
+
+  // ✅ Derecha: filtros + lunita
+  actions: [
+    GlyphFilter(
+      size: 20,
+      onTap: _openFiltersSheet,
+    ),
+    const ThemeToggle(size: 22),
+    const SizedBox(width: 8),
+  ],
+),
+
       body: FutureBuilder<List<Trip>>(
         future: _future,
         builder: (context, snap) {
@@ -399,18 +482,31 @@ class _MyLoadsPageState extends State<MyLoadsPage> {
           _lastItems = items;
 
           if (items.isEmpty) {
-            return const Center(child: Text('No tienes viajes publicados.'));
-          }
+  // ✅ NO hay viajes: solo el mensaje, sin CleanFilter
+  return _greenCenterPill('No tienes viajes publicados.');
+}
 
-          final filtered = _applyFiltersTo(items);
+      final filtered = _applyFiltersTo(items);
 
-          if (filtered.isEmpty) {
-            return const Center(
-              child: Text(
-                'No hay viajes que coincidan con la búsqueda o filtros.',
+      if (filtered.isEmpty) {
+        // ✅ Sí hay viajes, pero NO hay coincidencias: mensaje + botón limpiar
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _greenCenterPill('No hay viajes que coincidan con la búsqueda o filtros.'),
+              const SizedBox(height: 10),
+              CleanFilter(
+                enabled: true,
+                showLabel: true,
+                label: 'Limpiar',
+                onTap: _clearSearchAndFilters,
               ),
-            );
-          }
+            ],
+          ),
+        );
+      }
+
 
           final myId = AuthSession.instance.user.value?.id ?? '';
 
@@ -507,6 +603,20 @@ class _TripFilters {
         minPrice: minPrice,
         maxPrice: maxPrice,
       );
+
+    bool get isEmpty =>
+      origin.trim().isEmpty &&
+      destination.trim().isEmpty &&
+      cargoType.trim().isEmpty &&
+      vehicle.trim().isEmpty &&
+      estado.trim().isEmpty &&
+      comercial.trim().isEmpty &&
+      contacto.trim().isEmpty &&
+      minTons == null &&
+      maxTons == null &&
+      minPrice == null &&
+      maxPrice == null;
+
 }
 
 class _FilterTextField extends StatelessWidget {
@@ -515,7 +625,6 @@ class _FilterTextField extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   const _FilterTextField({
-    super.key,
     required this.label,
     required this.initialValue,
     required this.onChanged,

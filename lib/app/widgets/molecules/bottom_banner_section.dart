@@ -7,17 +7,33 @@ import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 /// - Texto de apoyo con un número “enlace” que se puede COPIAR.
 /// - Carrusel con el logo u otras imágenes.
 ///
+///
+///
+///
 /// 🔧 Cambios:
 ///  • `donationNumber` es configurable desde afuera.
 ///  • El número se muestra azul + subrayado y al tocarlo se copia al portapapeles.
 class BottomBannerSection extends StatelessWidget {
   const BottomBannerSection({
     super.key,
-    this.prefixText = '¡Apoya este proyecto! Llave Bre-B: ',
+    this.prefixText = '¿Desearías apoyar este proyecto? Llave Bre-B: ',
     required this.donationNumber,
     this.onTapDonation,
     this.carouselImages = const [
+      'assets/images/ad_start_small.png',
       'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
+      'assets/images/proximamente_V2.png',
+      'assets/images/gana_premios_completo.png',
+      'assets/images/gana_premios_tres_pasos.png',
+      'assets/images/gana_premios_nueve_pasos_1.png',
+      'assets/images/gana_premios_nueve_pasos_2.png',
+      'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
+      'assets/images/proximamente_V2.png',
+      'assets/images/con_tu_apoyo.png',
+      'assets/images/qr_inferior.png',
+      'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
+
+
     ],
     this.carouselHeight = 140, 
   });
@@ -107,7 +123,7 @@ class BottomBannerSection extends StatelessWidget {
           child: BannerCarousel(
             height: carouselHeight,
             imagePaths: carouselImages,
-            interval: const Duration(seconds: 5),
+            interval: const Duration(seconds: 10),
             borderRadius: 16,
           ),
         ),

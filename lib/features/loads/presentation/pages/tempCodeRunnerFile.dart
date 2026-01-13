@@ -131,7 +131,7 @@ class _VerifyCodePageState extends State<VerifyCodePage> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: cs.surfaceVariant.withOpacity(0.4),
+                    color: cs.surfaceContainerHighest.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(

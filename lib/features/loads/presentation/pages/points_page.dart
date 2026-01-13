@@ -1,8 +1,12 @@
 // lib/features/loads/presentation/pages/points_page.dart
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 👈 para Clipboard
+import 'package:flutter/services.dart'; // 👈 Clipboard
 import 'package:http/http.dart' as http;
+
+import 'package:flutter/gestures.dart'; // 👈 para link azul
+import 'package:url_launcher/url_launcher.dart'; // 👈 abrir URL
 
 import 'package:conexion_carga_app/core/env.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
@@ -17,6 +21,22 @@ class PointsPage extends StatefulWidget {
 }
 
 class _PointsPageState extends State<PointsPage> {
+  // ✅ NUEVO: checkbox de términos del concurso
+  bool _acceptedPromoTerms = false;
+
+  // ✅ NUEVO: abre términos del concurso desde el BACK
+  Future<void> _openPromoTerms() async {
+    const url = 'https://conexioncarga.com/promociones';
+    final uri = Uri.parse(url);
+
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir los términos.')),
+      );
+    }
+  }
+
   bool _loading = true;
   String? _error;
 
@@ -26,16 +46,10 @@ class _PointsPageState extends State<PointsPage> {
   // ────────────────────────────────────────────────────────────
   // URLs de referencia (CAMBIA ESTOS VALORES EN PROD)
   // ────────────────────────────────────────────────────────────
-  // 1) URL de Play Store
   static const String ANDROID_STORE_URL =
       'https://play.google.com/store/apps/details?id=com.tuempresa.conexioncarga';
-  // 2) URL de App Store
   static const String IOS_STORE_URL =
       'https://apps.apple.com/app/id0000000000';
-  // 3) Base de Deep Link / Universal Link (o tu Dynamic Link)
-  //    Debe redirigir a tu app y pasar ?ref=<email>
-  //    Ejemplo con dominio propio: https://conexioncarga.app/ref
-  //    Ejemplo con Firebase: https://cxncarga.page.link/ref
   static const String DEEP_LINK_BASE = 'https://conexioncarga.app/ref';
 
   String get _firstName {
@@ -58,14 +72,13 @@ class _PointsPageState extends State<PointsPage> {
 
     try {
       final uri = Uri.parse('${Env.baseUrl}/api/users/leaderboard');
-
       final res = await http.get(uri).timeout(const Duration(seconds: 12));
 
       if (res.statusCode != 200) {
         throw Exception('No se pudo obtener el top (${res.statusCode}).');
       }
 
-      final List<dynamic> data = jsonDecode(res.body) as List<dynamic>;
+      final List data = jsonDecode(res.body);
 
       // Usuario actual para decidir si se enmascara o no
       final me = AuthSession.instance.user.value;
@@ -75,21 +88,19 @@ class _PointsPageState extends State<PointsPage> {
       for (final it in data) {
         final m = (it as Map).cast<String, dynamic>();
         final email = (m['email'] ?? '').toString();
-        final phone = (m['phone'] ?? '').toString(); // tu cédula/N° doc
+        final phone = (m['phone'] ?? '').toString();
         final pts = (m['points'] is int)
             ? m['points'] as int
             : int.tryParse('${m['points']}') ?? 0;
 
         rows.add(_Row(
           email: email,
-          maskedEmail:
-              email.toLowerCase() == myEmail ? email : _maskEmail(email),
+          maskedEmail: email.toLowerCase() == myEmail ? email : _maskEmail(email),
           idLast4: _last4(phone),
           points: pts,
         ));
       }
 
-      // Ordena por puntos descendente
       rows.sort((a, b) => b.points.compareTo(a.points));
 
       setState(() {
@@ -102,7 +113,6 @@ class _PointsPageState extends State<PointsPage> {
     }
   }
 
-  // Enmascara email excepto el actual (p.e. j*****2@gmail.com)
   String _maskEmail(String email) {
     final parts = email.split('@');
     if (parts.length != 2) return email;
@@ -134,12 +144,10 @@ class _PointsPageState extends State<PointsPage> {
       return;
     }
 
-    // Construimos el deep link con ?ref=<email>
     final deepLink = Uri.parse(DEEP_LINK_BASE).replace(queryParameters: {
       'ref': email,
     }).toString();
 
-    // Mensaje con *negritas* (WhatsApp/Telegram soportan *texto* en negrita)
     final msg = StringBuffer()
       ..writeln('*Descarga la app Conexión Carga desde mi enlace de referido!* 🚚')
       ..writeln('')
@@ -162,6 +170,10 @@ class _PointsPageState extends State<PointsPage> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    // ✅ Colores para que SIEMPRE se lea (claro y oscuro)
+    final baseTextColor = isLight ? Colors.black87 : Colors.white70;
 
     return Scaffold(
       appBar: AppBar(
@@ -187,32 +199,99 @@ class _PointsPageState extends State<PointsPage> {
         ],
       ),
 
-      // 👇 Cambio mínimo: agregamos el botón arriba y desplazamos la tabla
       body: Column(
         children: [
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+
+          // ─────────────────────────────────────────────
+          // ✅ BLOQUE SUPERIOR: botón + términos (SIN OVERFLOW)
+          // ─────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: kBrandOrange, // Botón naranja solicitado
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+            child: Column(
+              children: [
+                // ✅ Botón (se deshabilita si NO ha aceptado)
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: kBrandOrange,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    // ✅ clave: si es null, queda disabled y gris
+                    onPressed: _acceptedPromoTerms ? _copyReferralLink : null,
+                    icon: const Icon(Icons.link),
+                    label: const Text('¡ Genera enlace de referido !'),
                   ),
                 ),
-                onPressed: _copyReferralLink,
-                icon: const Icon(Icons.link),
-                label: const Text('¡ Genera enlace de referido !'),
-              ),
+
+                const SizedBox(height: 8),
+
+                // ✅ CAMBIO CLAVE (ANTI-OVERFLOW):
+                // En lugar de Row + Expanded, usamos CheckboxListTile.
+                // Esto evita overflow en dispositivos pequeños y permite saltos de línea.
+                Theme(
+                  // ✅ quitamos padding interno exagerado del ListTile
+                  data: Theme.of(context).copyWith(
+                    listTileTheme: const ListTileThemeData(
+                      contentPadding: EdgeInsets.zero,
+                      horizontalTitleGap: 6,
+                      minLeadingWidth: 0,
+                    ),
+                  ),
+                  child: CheckboxListTile(
+                    value: _acceptedPromoTerms,
+                    onChanged: (v) {
+                      setState(() => _acceptedPromoTerms = v ?? false);
+                    },
+
+                    controlAffinity: ListTileControlAffinity.leading,
+
+                    // ✅ Esto hace que el texto pueda ocupar 2 líneas sin romper nada
+                    dense: true,
+                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+
+                    // ✅ el “texto” completo lo pintamos con RichText (incluye link azul)
+                    title: RichText(
+                      text: TextSpan(
+                        style: TextStyle(
+                          fontSize: 13, // 👈 aquí cambias tamaño del texto
+                          color: baseTextColor, // ✅ SIEMPRE visible
+                          height: 1.2,
+                        ),
+                        children: [
+                          const TextSpan(text: 'Acepto los términos del concurso '),
+                          TextSpan(
+                            text: '(ver términos)',
+                            style: const TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.w800,
+                              decoration: TextDecoration.underline,
+                            ),
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = _openPromoTerms,
+                          ),
+                        ],
+                      ),
+                      maxLines: 2, // ✅ máximo 2 líneas
+                      overflow: TextOverflow.ellipsis, // ✅ si es MUY pequeño, recorta
+                      softWrap: true,
+                    ),
+                  ),
+                ),
+
+                // ✅ “correr la tabla un poquito para abajo”
+                const SizedBox(height: 10),
+              ],
             ),
           ),
-          const SizedBox(height: 8),
 
-          // El resto queda idéntico, pero dentro de Expanded
+          // ─────────────────────────────────────────────
+          // TABLA (igual que antes)
+          // ─────────────────────────────────────────────
           Expanded(
             child: _Body(
               loading: _loading,
@@ -263,7 +342,6 @@ class _Body extends StatelessWidget {
 
     return Column(
       children: [
-        // ── encabezado/rotulos ───────────────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
           child: Container(
@@ -284,7 +362,6 @@ class _Body extends StatelessWidget {
           ),
         ),
 
-        // ── lista ────────────────────────────────────────────────
         Expanded(
           child: RefreshIndicator(
             onRefresh: onRefresh,
@@ -329,9 +406,6 @@ class _HeaderCell extends StatelessWidget {
   }
 }
 
-// ────────────────────────────────────────────────────────────
-// Row visual
-// ────────────────────────────────────────────────────────────
 class _RowTile extends StatelessWidget {
   const _RowTile({required this.row, required this.rank});
 
@@ -361,7 +435,6 @@ class _RowTile extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Row(
         children: [
-          // TOP: medalla + # (centrado)
           Expanded(
             flex: 16,
             child: Center(
@@ -378,11 +451,11 @@ class _RowTile extends StatelessWidget {
                                 : Icons.emoji_events_outlined,
                     size: 18,
                     color: rank == 1
-                        ? const Color(0xFFFFC107) // oro
+                        ? const Color(0xFFFFC107)
                         : rank == 2
-                            ? const Color(0xFFB0BEC5) // plata
+                            ? const Color(0xFFB0BEC5)
                             : rank == 3
-                                ? const Color(0xFFCD7F32) // bronce
+                                ? const Color(0xFFCD7F32)
                                 : Colors.grey,
                   ),
                   const SizedBox(width: 6),
@@ -395,7 +468,6 @@ class _RowTile extends StatelessWidget {
             ),
           ),
 
-          // E-MAIL (una sola línea, centrado)
           Expanded(
             flex: 38,
             child: Center(
@@ -408,7 +480,6 @@ class _RowTile extends StatelessWidget {
             ),
           ),
 
-          // ID (últimos 4, centrado)
           Expanded(
             flex: 24,
             child: Center(
@@ -421,13 +492,11 @@ class _RowTile extends StatelessWidget {
             ),
           ),
 
-          // PUNTOS (píldora verde)
           Expanded(
             flex: 22,
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: isLight ? kGreenStrong : kDarkGreen,
                   borderRadius: BorderRadius.circular(18),
@@ -448,11 +517,10 @@ class _RowTile extends StatelessWidget {
   }
 }
 
-// Datos mínimos de cada fila
 class _Row {
   final String email;
-  final String maskedEmail; // ya viene enmascarado si NO es el usuario actual
-  final String idLast4; // …1234
+  final String maskedEmail;
+  final String idLast4;
   final int points;
 
   _Row({
@@ -462,52 +530,3 @@ class _Row {
     required this.points,
   });
 }
-
-// Botón de refresco en AppBar (separado para mantener AppBar liviano)
-class _RefreshButton extends StatelessWidget {
-  const _RefreshButton();
-
-  @override
-  Widget build(BuildContext context) {
-    final state =
-        context.findAncestorStateOfType<_PointsPageState>(); // puede ser null
-    return IconButton(
-      tooltip: 'Actualizar',
-      icon: const Icon(Icons.refresh),
-      onPressed: state?._load,
-    );
-  }
-}
-
-/* ─────────────────────────────────────────────────────────────
-   NOTA para completar el flujo de “referido”:
-
-   1) Configura Deep Links / Universal Links:
-      - Android (App Links): agrega <intent-filter> para https de tu dominio
-        o usa Firebase Dynamic Links.
-      - iOS (Universal Links): asocia el dominio y habilita “Associated Domains”.
-
-   2) Asegúrate que el enlace DEEP_LINK_BASE (arriba) reciba ?ref=<email>
-      y lo entregue a tu app.
-
-   3) En registration_form_page.dart, al iniciar la pantalla,
-      lee la query 'ref' del deep link y precarga tu TextEditingController.
-
-      Ejemplo (pseudo-minimalista):
-      ---------------------------------------
-      // En el State de RegistrationFormPage:
-      @override
-      void didChangeDependencies() {
-        super.didChangeDependencies();
-        final uri = ModalRoute.of(context)?.settings.name;
-        if (uri != null) {
-          final ref = Uri.tryParse(uri)?.queryParameters['ref'] ?? '';
-          if (ref.isNotEmpty) {
-            _referidoController.text = ref; // tu controller del campo
-          }
-        }
-      }
-      ---------------------------------------
-      Si usas paquetes como uni_links / firebase_dynamic_links,
-      obtén el Uri desde allí y aplica la misma lógica.
-   ───────────────────────────────────────────────────────────── */

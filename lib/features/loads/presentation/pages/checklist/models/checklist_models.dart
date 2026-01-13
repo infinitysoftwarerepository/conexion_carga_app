@@ -1,5 +1,4 @@
 // lib/features/loads/presentation/pages/checklist/models/checklist_models.dart
-import 'package:flutter/material.dart';
 
 class DocCheck {
   DocCheck({

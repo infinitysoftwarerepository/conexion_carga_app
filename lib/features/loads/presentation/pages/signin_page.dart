@@ -1,4 +1,4 @@
-import 'package:conexion_carga_app/features/loads/presentation/pages/widgets/role_option_title.dart';
+import 'package:conexion_carga_app/app/widgets/role_option_title.dart';
 import 'package:flutter/material.dart';
 import 'package:conexion_carga_app/features/loads/domain/user_role.dart';
 

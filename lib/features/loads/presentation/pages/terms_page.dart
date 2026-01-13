@@ -1,11 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/services.dart' show rootBundle;
-import 'package:path_provider/path_provider.dart';
-import 'package:open_filex/open_filex.dart';
-import 'dart:io';
+
 
 // 🌗 Lunita (toggle claro/oscuro)
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
@@ -32,35 +28,27 @@ class _TermsPageState extends State<TermsPage> {
   }
 
   // Lanzar PDFs dentro de assets
-Future<void> _openPdf(String assetPath) async {
+// ✅ NUEVO: abre PDFs desde el BACK (URL pública)
+Future<void> _openPdfUrl(String url) async {
   try {
-    // 🌐 Si es Web ➜ abre el PDF directo desde assets
-    if (kIsWeb) {
-      final cleanPath = assetPath.replaceFirst("assets/", "");
-      final url = "/assets/$cleanPath";
+    final uri = Uri.parse(url);
 
-      if (!await launchUrl(Uri.parse(url))) {
-        throw Exception("No se pudo abrir el PDF en Web.");
-      }
-      return;
+    final ok = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication, // abre en navegador / visor del sistema
+    );
+
+    if (!ok) {
+      throw Exception('No se pudo abrir: $url');
     }
-
-    // 📱 Si es Android/iOS ➜ usar filesystem temporal y OpenFilex
-    final byteData = await rootBundle.load(assetPath);
-
-    final tempDir = await getTemporaryDirectory();
-    final tempPath = '${tempDir.path}/${assetPath.split('/').last}';
-
-    final file = File(tempPath);
-    await file.writeAsBytes(byteData.buffer.asUint8List(), flush: true);
-
-    await OpenFilex.open(file.path);
   } catch (e) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('No se pudo abrir el documento: $e')),
     );
   }
 }
+
 
 
 
@@ -143,9 +131,8 @@ Future<void> _openPdf(String assetPath) async {
                                 ),
                                 recognizer: TapGestureRecognizer()
                                   ..onTap = () {
-                                    _openPdf(
-                                      "assets/docs/terminos_uso_conexion_carga.pdf",
-                                    );
+                                    _openPdfUrl("https://conexioncarga.com/terminos");
+
                                   },
                               ),
                             ],
@@ -188,9 +175,8 @@ Future<void> _openPdf(String assetPath) async {
                                 ),
                                 recognizer: TapGestureRecognizer()
                                   ..onTap = () {
-                                    _openPdf(
-                                      "assets/docs/politica_privacidad_conexion_carga.pdf",
-                                    );
+                                    _openPdfUrl("https://conexioncarga.com/privacidad");
+
                                   },
                               ),
                             ],

@@ -20,12 +20,9 @@ import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
 import 'package:conexion_carga_app/app/widgets/anchored_menu_button.dart';
 
 // ✅ Para regresar a StartPage al cerrar sesión
-import 'package:conexion_carga_app/features/loads/presentation/pages/start_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/start/start_page.dart';
 
-// ⬇️ IMPORTA LA NUEVA PÁGINA
-import 'package:conexion_carga_app/features/loads/presentation/pages/checklist_page.dart';
 
-import 'package:conexion_carga_app/features/loads/presentation/pages/home_page.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({
@@ -98,7 +95,7 @@ class HomeScreen extends StatelessWidget {
   context,
   MaterialPageRoute(builder: (_) => const MyLoadsPage()),
 );
-;
+
                       },
                     ),
 

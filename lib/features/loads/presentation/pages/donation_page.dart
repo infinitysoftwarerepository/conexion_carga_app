@@ -107,7 +107,7 @@ class DonationPage extends StatelessWidget {
                           return Container(
                             width: cardWidth,
                             decoration: BoxDecoration(
-                              color: cs.surfaceVariant.withOpacity(0.7),
+                              color: cs.surfaceContainerHighest.withOpacity(0.7),
                               borderRadius: BorderRadius.circular(24),
                               boxShadow: [
                                 BoxShadow(

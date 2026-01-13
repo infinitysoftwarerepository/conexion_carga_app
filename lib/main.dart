@@ -1,6 +1,7 @@
 // lib/main.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // 👈 NUEVO
 
 import 'package:conexion_carga_app/core/auth_session.dart';
 
@@ -11,16 +12,22 @@ import 'package:conexion_carga_app/app/theme/theme_conection.dart';
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 /// 🏠 Pantalla inicial
-import 'package:conexion_carga_app/features/loads/presentation/pages/start_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/start/start_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔒 BLOQUEO DE ORIENTACIÓN (SOLO VERTICAL)
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
 
   // Hidrata la sesión desde storage local (token, user, etc.)
   await AuthSession.instance.hydrate();
 
   runApp(const Bootstrap());
 }
+
 
 /// ===============================================================
 /// 🥾 Bootstrap

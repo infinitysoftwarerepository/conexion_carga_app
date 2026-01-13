@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/src/services/text_formatter.dart';
 
 /// ---------------------------------------------------------------------------
 ///  AppTextField  (SIMPLE)
@@ -33,7 +34,7 @@ class AppTextField extends StatelessWidget {
     this.onChanged,
     this.obscureText = false,
     this.textInputAction,
-    this.suffixIcon,
+    this.suffixIcon, required List<TextInputFormatter> inputFormatters,
   });
 
   @override

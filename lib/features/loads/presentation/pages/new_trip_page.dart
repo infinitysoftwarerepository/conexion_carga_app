@@ -1,7 +1,8 @@
 import 'dart:convert' as convert;
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart'; // para RenderBox en el dropdown
+// para RenderBox en el dropdown
 import 'package:http/http.dart' as http;
 
 import 'package:conexion_carga_app/app/widgets/custom_app_bar.dart';
@@ -11,7 +12,7 @@ import 'package:conexion_carga_app/app/widgets/inputs/app_multiline_field.dart';
 import 'package:conexion_carga_app/core/env.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
-import 'package:conexion_carga_app/features/loads/presentation/pages/start_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/start/start_page.dart';
 
 /// Pantalla para registrar un nuevo viaje (y reutilizar uno existente)
 class NewTripPage extends StatefulWidget {
@@ -39,6 +40,61 @@ class _NewTripPageState extends State<NewTripPage> {
   final _contactoCtrl = TextEditingController();
   final _conductorCtrl = TextEditingController(); // se sigue usando en el body
   final _obsCtrl = TextEditingController();
+
+    // ---------------------------------------------------------------------------
+  // Formateo en vivo para el campo "Valor (COP)"
+  // ---------------------------------------------------------------------------
+  bool _isFormattingValor = false;
+
+  /// Formatea un entero a string con puntos de miles: 1000000 → "1.000.000"
+  String _formatCop(int value) {
+    final s = value.toString();
+    final buffer = StringBuffer();
+    for (int i = 0; i < s.length; i++) {
+      final reverseIndex = s.length - i; // posiciones desde el final
+      buffer.write(s[i]);
+      // Insertar punto si faltan grupos completos de 3 dígitos
+      if (reverseIndex > 1 && reverseIndex % 3 == 1) {
+        buffer.write('.');
+      }
+    }
+    return buffer.toString();
+  }
+
+  /// Listener que se ejecuta cada vez que cambia el texto del campo "Valor"
+  void _onValorChanged() {
+    if (_isFormattingValor) return; // evita bucles al modificar el texto
+
+    _isFormattingValor = true;
+    final raw = _valorCtrl.text;
+
+    // 1) Dejar solo dígitos (quita puntos, comas, espacios, etc.)
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) {
+      _valorCtrl.clear();
+      _isFormattingValor = false;
+      return;
+    }
+
+    // 2) Parsear a int
+    final value = int.tryParse(digits);
+    if (value == null) {
+      _isFormattingValor = false;
+      return;
+    }
+
+    // 3) Formatear con separadores de miles
+    final formatted = _formatCop(value);
+
+    // 4) Volver a escribir en el controller manteniendo el cursor al final
+    _valorCtrl.value = TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+
+    _isFormattingValor = false;
+  }
+
 
   // Viaje estándar/premium
   bool _premium = false;
@@ -84,6 +140,11 @@ class _NewTripPageState extends State<NewTripPage> {
         _pesoCtrl.text =
             d == d.truncateToDouble() ? d.toStringAsFixed(0) : d.toStringAsFixed(1);
       }
+
+      if ((t.empresa ?? '').trim().isNotEmpty) {
+        _empresaCtrl.text = t.empresa!;
+      }
+
       if (t.price != null) {
         _valorCtrl.text = t.price!.toStringAsFixed(0);
       }
@@ -98,11 +159,20 @@ class _NewTripPageState extends State<NewTripPage> {
         _conductorCtrl.text = t.conductor!;
       }
 
-      if (t.durationHours != null) {
-        _durationHours = t.durationHours!;
+      if ((t.observaciones ?? '').trim().isNotEmpty) {
+        _obsCtrl.text = t.observaciones!;
       }
     }
+  // 👉 Formateo en vivo del campo Valor COP
+    _valorCtrl.addListener(_onValorChanged);
+
+    // Si venimos con un valor precargado, lo formateamos una vez
+    if (_valorCtrl.text.isNotEmpty) {
+      _onValorChanged();
+    }
   }
+
+  
 
   @override
   void dispose() {
@@ -236,15 +306,73 @@ class _NewTripPageState extends State<NewTripPage> {
   ];
 
   static const _fallbackTiposVehiculo = <String>[
-    'Tracto',
-    'Sencillo',
-    'Doble troque',
-    'Turbo sencillo',
-    'NHR',
-    'NPR',
-    'Vehículo rígido de dos ejes',
-    'Vehículo rígido de tres ejes',
-  ];
+  // Cabeza tractora / combinaciones
+  'Tractocamión',
+  'Tractomula',
+  'Tractocamión 4x2',
+  'Tractocamión 6x2',
+  'Tractocamión 6x4',
+  'Tractomula 2S',
+  'Tractomula 3S',
+  'Tractomula 2S3',
+  'Tractomula 3S3',
+
+  // Rígidos pesados
+  'Camión rígido',
+  'Camión 2 ejes',
+  'Camión 3 ejes',
+  'Camión 4 ejes',
+  'Camión pesado',
+
+  // Doble troque
+  'Doble troque',
+  'Doble troque 3 ejes',
+  'Doble troque 4 ejes',
+
+  // Medianos y livianos
+  'Turbo',
+  'Turbo sencillo',
+  'Camión mediano',
+  'Camión liviano',
+  'Camioneta de carga',
+  'Furgón',
+  'Van de carga',
+
+  // Tipo de carrocería / uso logístico
+  'Furgón carrozado',
+  'Furgón refrigerado',
+  'Plataforma',
+  'Estacas',
+  'Cama baja',
+  'Cama cuna',
+  'Cisterna',
+  'Tolva',
+  'Portacontenedor',
+  'Porta vehículos',
+  'Porta vidrio',
+  'Porta ganado',
+
+  // Remolques
+  'Remolque',
+  'Semirremolque',
+  'Plataforma remolque',
+  'Furgón remolque',
+  'Refrigerado remolque',
+  'Cisterna remolque',
+  'Tolva remolque',
+
+  // Términos regionales
+  'Mula',
+  'Gandola',
+  'Camión con acoplado',
+  'Patineta',
+
+  // Referencias comerciales comunes
+  'NHR',
+  'NPR',
+  'NKR',
+];
+
 
   List<String> _fallbackFor(String endpoint) {
     if (endpoint.contains('municipios')) return _fallbackMunicipios;
@@ -471,7 +599,7 @@ class _NewTripPageState extends State<NewTripPage> {
         titleSpacing: 0,
         height: 56,
         centerTitle: true,
-        title: const Text('Registrar nuevo viaje'),
+        title: const Text('Publicar nuevo viaje'),
         actions: [ThemeToggle(size: 22), const SizedBox(width: 8)],
       ),
       body: SafeArea(
@@ -553,20 +681,23 @@ class _NewTripPageState extends State<NewTripPage> {
                       gap: fieldUi.rowGap,
                       left: AppTextField(
                         label: 'Valor (COP)',
-                        hint: 'Ej: 10000000',
+                        hint: 'Ej: 10.000.000',
                         controller: _valorCtrl,
                         keyboardType: TextInputType.number,
                         icon: Icons.attach_money,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly, // 👈 solo números
+                        ],
                       ),
                       right: AppTextField(
                         label: 'Peso (T)',
                         hint: 'Ej: 32',
                         controller: _pesoCtrl,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(decimal: true),
-                        icon: Icons.scale_outlined,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        icon: Icons.scale_outlined, inputFormatters: [],
                       ),
                     ),
+
                     SizedBox(height: fieldUi.rowGap),
 
                     // 7) Empresa / 8) Comercial
@@ -577,13 +708,13 @@ class _NewTripPageState extends State<NewTripPage> {
                         label: 'Empresa',
                         hint: 'Nombre de la empresa',
                         controller: _empresaCtrl,
-                        icon: Icons.apartment_outlined,
+                        icon: Icons.apartment_outlined, inputFormatters: [],
                       ),
                       right: AppTextField(
                         label: 'Comercial',
                         hint: 'Nombre del comercial',
                         controller: _comercialCtrl,
-                        icon: Icons.badge_outlined,
+                        icon: Icons.badge_outlined, inputFormatters: [],
                       ),
                     ),
                     SizedBox(height: fieldUi.rowGap),
@@ -594,7 +725,7 @@ class _NewTripPageState extends State<NewTripPage> {
                       hint: 'Cel del comercial',
                       controller: _contactoCtrl,
                       keyboardType: TextInputType.phone,
-                      icon: Icons.phone_outlined,
+                      icon: Icons.phone_outlined, inputFormatters: [],
                     ),
                     SizedBox(height: fieldUi.rowGap),
 
@@ -615,8 +746,8 @@ class _NewTripPageState extends State<NewTripPage> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.light
-                            ? cs.surfaceVariant.withOpacity(0.30)
-                            : cs.surfaceVariant.withOpacity(0.12),
+                            ? cs.surfaceContainerHighest.withOpacity(0.30)
+                            : cs.surfaceContainerHighest.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
@@ -874,6 +1005,8 @@ class _DropdownCatalogFieldState extends State<DropdownCatalogField> {
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) _ensureData();
     });
+
+        
   }
 
   @override

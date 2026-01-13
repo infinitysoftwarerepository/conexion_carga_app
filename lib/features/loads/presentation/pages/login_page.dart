@@ -156,23 +156,49 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 8),
                         TextField(
                           controller: _emailCtrl,
+
+                          // ✅ FUERZA el color del texto escrito
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
+
+                          // ✅ Color del cursor
+                          cursorColor: Colors.black,
+
                           keyboardType: TextInputType.emailAddress,
                           textInputAction: TextInputAction.next,
                           onChanged: (_) => setState(() {}),
+
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.white,
-                            prefixIcon: const Icon(Icons.alternate_email),
+
+                            // ✅ Color del icono
+                            prefixIcon: const Icon(
+                              Icons.alternate_email,
+                              color: Colors.black54,
+                            ),
+
                             hintText: 'tucorreo@dominio.com',
+
+                            // ✅ Color del texto placeholder
+                            hintStyle: const TextStyle(
+                              color: Colors.black45,
+                              fontWeight: FontWeight.w500,
+                            ),
+
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(28),
                             ),
+
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 14,
                             ),
                           ),
                         ),
+
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 150),
                           child: _emailCtrl.text.isNotEmpty && !_emailOk
@@ -213,36 +239,61 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        TextField(
+                       TextField(
                           controller: _passCtrl,
                           obscureText: !_showPass,
+
+                          // ✅ TEXTO NEGRO
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.w600,
+                          ),
+
+                          // ✅ CURSOR NEGRO
+                          cursorColor: Colors.black,
+
                           textInputAction: TextInputAction.done,
                           onChanged: (_) => setState(() {}),
                           onSubmitted: (_) => _trySubmit(),
+
                           decoration: InputDecoration(
                             filled: true,
                             fillColor: Colors.white,
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              tooltip: _showPass ? 'Ocultar' : 'Mostrar',
-                              icon: Icon(
-                                _showPass
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _showPass = !_showPass),
+
+                            // ✅ ICONO NEGRO
+                            prefixIcon: const Icon(
+                              Icons.lock_outline,
+                              color: Colors.black54,
                             ),
-                            hintText: ' escriba su contraseña',
+
+                            // 👁 Icono de mostrar/ocultar
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _showPass ? Icons.visibility_off : Icons.visibility,
+                                color: Colors.black54, // 👈 IMPORTANTE
+                              ),
+                              onPressed: () => setState(() => _showPass = !_showPass),
+                            ),
+
+                            hintText: 'escriba su contraseña',
+
+                            // ✅ HINT NEGRO
+                            hintStyle: const TextStyle(
+                              color: Colors.black45,
+                              fontWeight: FontWeight.w500,
+                            ),
+
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(28),
                             ),
+
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 14,
                             ),
                           ),
                         ),
+
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 150),
                           child: _passCtrl.text.isNotEmpty && !_passOk

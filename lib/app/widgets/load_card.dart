@@ -41,6 +41,29 @@ class LoadCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    // ---------------------------------------------------------------------------
+    // 🎨 Colores “meta” (los textos chicos: carga, vehículo, empresa)
+    // IMPORTANTE: NO usar Colors.blackXX aquí, porque en tema oscuro se ven mal.
+    // Cambia estos 2 valores y personalizas TODO el look de esa info.
+    // ---------------------------------------------------------------------------
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    // Íconos pequeños a la izquierda (carga/vehículo/empresa)
+    final Color metaIconColor =
+        isLight ? Colors.black54 : cs.onSurface.withOpacity(0.70);
+
+    // Texto pequeño (carga/vehículo/empresa)
+    final Color metaTextColor =
+        isLight ? Colors.black87 : cs.onSurface; // blanco/gris claro en dark
+
+    // Estilo único para esos textos (fácil de tunear)
+    final TextStyle metaTextStyle = TextStyle(
+      fontSize: 10,
+      color: metaTextColor,
+      // Si un día quieres “más grueso” en oscuro:
+      // fontWeight: FontWeight.w500,
+    );
+
     final remaining = trip.remaining;
     final empresa = trip.empresa ?? '';
      
@@ -102,7 +125,8 @@ class LoadCard extends StatelessWidget {
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
-                      ),
+                                          
+                                      ),
                     ),
                   ),
                   if (expiredBadge != null) ...[
@@ -117,21 +141,18 @@ class LoadCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.inventory_2_outlined,
-                    size: 14,
-                    color: Colors.black54,
-                  ),
+                  Icon(
+                  Icons.inventory_2_outlined,
+                  size: 14,
+                  color: metaIconColor, // ✅ se adapta al tema
+                ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       trip.cargoType,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.black87,
-                      ),
+                      style: metaTextStyle, // ✅ se adapta al tema
                     ),
                   ),
                 ],
@@ -142,21 +163,21 @@ class LoadCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                    Icon(
                     Icons.local_shipping_outlined,
                     size: 14,
-                    color: Colors.black54,
+                    color: metaIconColor, // ✅ se adapta al tema
                   ),
+                  
+                  
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       trip.vehicle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.black87,
-                      ),
+                      style: metaTextStyle, // ✅ se adapta al tema
+                      
                     ),
                   ),
                 ],
@@ -166,20 +187,17 @@ class LoadCard extends StatelessWidget {
               // Tonelaje
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.scale_outlined,
                     size: 14,
-                    color: Colors.black54,
+                    color: metaIconColor,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     _formatTons(trip.tons),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10,
-                      ),
+                    style:  metaTextStyle,
                   ),
                 ],
               ),
@@ -188,10 +206,10 @@ class LoadCard extends StatelessWidget {
               // Precio
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.attach_money,
                     size: 14,
-                    color: Colors.black54,
+                    color: metaIconColor,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -199,10 +217,7 @@ class LoadCard extends StatelessWidget {
                       _formatMoney(trip.price),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 10
-                      ),
+                      style: metaTextStyle
                     ),
                   ),
                 ],
@@ -213,10 +228,10 @@ class LoadCard extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.business_outlined,
                       size: 14,
-                      color: Colors.black54,
+                      color: metaIconColor,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -224,10 +239,7 @@ class LoadCard extends StatelessWidget {
                         empresa,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 10,
-                          color: Colors.black87,
-                        ),
+                        style: metaTextStyle
                       ),
                     ),
                   ],

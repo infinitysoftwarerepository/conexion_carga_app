@@ -68,7 +68,7 @@ class AppColors extends ThemeExtension<AppColors> {
         success: Color(0xFF57D276),      // Verde luminoso en oscuro
         glyph: Color(0xFFBFC3CA),        // Gris claro para íconos en oscuro
         cardBorder: Color(0xFF3A3A3A),   // Gris oscuro en bordes
-        helpBubbleBg: Color(0xFFFFB84D), // Amarillo/naranja suave en oscuro
+        helpBubbleBg: Color(0xFFFF5500), // Amarillo/naranja suave en oscuro
       );
 
   @override

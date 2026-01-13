@@ -1,34 +1,42 @@
-// lib/features/loads/presentation/pages/start_page.dart
-
 import 'dart:async';
 import 'dart:math';
+import 'package:conexion_carga_app/app/widgets/clean_filter.dart'; // 👈 NUEVO
+
 
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// 🎨 Tema y colores (los tuyos)
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
+
+// 🧩 Widgets de tu app (ya existentes)
 import 'package:conexion_carga_app/app/widgets/molecules/start_headline.dart';
-import 'package:conexion_carga_app/app/widgets/molecules/bottom_banner_section.dart';
-import 'package:conexion_carga_app/app/widgets/new_action_fab.dart';
 import 'package:conexion_carga_app/app/widgets/glyph_filter.dart';
 import 'package:conexion_carga_app/app/widgets/glyph_search.dart';
 import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
-import 'package:conexion_carga_app/app/widgets/load_card.dart';
 
-import 'package:conexion_carga_app/features/loads/presentation/pages/login_page.dart';
-import 'package:conexion_carga_app/features/loads/presentation/pages/registration_form_page.dart';
-import 'package:conexion_carga_app/features/loads/presentation/pages/my_loads_page.dart';
-import 'package:conexion_carga_app/features/loads/presentation/pages/points_page.dart';
-import 'package:conexion_carga_app/features/loads/presentation/pages/new_trip_page.dart';
-import 'package:conexion_carga_app/features/loads/presentation/pages/trip_detail_page.dart';
+// 🔐 Sesión / usuario
+import 'package:conexion_carga_app/core/auth_session.dart';
 
+// 🌐 Datos
 import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
 import 'package:conexion_carga_app/features/loads/domain/trip.dart';
-import 'package:conexion_carga_app/core/auth_session.dart';
-import 'package:conexion_carga_app/app/theme/theme_conection.dart' show AppColors;
+
+// 📄 Navegación a donación
 import 'package:conexion_carga_app/features/loads/presentation/pages/donation_page.dart';
 
+// ✅ Widgets extraídos (refactor paso 3)
+import 'widgets_start/start_header.dart';
+import 'widgets_start/trips_grid.dart';
+import 'widgets_start/start_footer_banner.dart';
+import 'widgets_start/ad_overlay.dart';
+import 'widgets_start/whatsapp_help_button.dart';
+import 'widgets_start/search_count_bubble.dart';
 
+/// ============================================================================
+/// ✅ Assets usados en esta pantalla.
+/// Si cambias la imagen o ícono, cambia estas constantes.
+/// ============================================================================
 const _adImage = 'assets/images/ad_start_full.png';
 const _whatsappIcon = 'assets/icons/whatsapp.png';
 
@@ -38,71 +46,193 @@ class StartPage extends StatefulWidget {
     this.userName = '◄ Inicie sesión o registrese',
   });
 
+  /// Texto que se muestra cuando NO hay user.firstName
+  /// o cuando no hay usuario autenticado.
   final String userName;
 
   @override
   State<StartPage> createState() => _StartPageState();
 }
 
-class _StartPageState extends State<StartPage> {
-  // 🔢 Rangos globales de filtros
+class _StartPageState extends State<StartPage>
+    with SingleTickerProviderStateMixin {
+  // ============================================================================
+  // ✅ 1) ANIMACIÓN: Aura del botón "+ Registrar viaje"
+  // ----------------------------------------------------------------------------
+  // - Se mantiene la idea que ya tenías.
+  // - La UI del botón vive en StartHeader (widget extraído).
+  // - Aquí solo mantenemos el Controller y la Animation.
+  // ============================================================================
+  late final AnimationController _registerGlowController;
+  late final Animation<double> _registerGlowAnimation;
+
+  // ============================================================================
+  // ✅ 2) Rangos globales para sliders de filtros
+  // ----------------------------------------------------------------------------
+  // Estos valores ayudan a que los sliders tengan un rango fijo.
+  // ============================================================================
   static const double kMinTons = 0;
   static const double kMaxTons = 60;
   static const double kMinPrice = 0;
   static const double kMaxPrice = 100_000_000;
 
+  // ============================================================================
+  // ✅ 3) Key para el menú del perfil (AppBar)
+  // ----------------------------------------------------------------------------
+  // Se usa para ubicar el menú justo debajo del icono del perfil.
+  // ============================================================================
   final GlobalKey _profileKey = GlobalKey();
 
-  List<Trip> _publicTrips = const <Trip>[];
+  // ============================================================================
+  // ✅ 4) Debounce para búsqueda
+  // ----------------------------------------------------------------------------
+  // “Debounce” significa: cuando el usuario escribe rápido,
+  // NO filtramos en cada letra, esperamos ~200ms.
+  // Esto mejora mucho la fluidez.
+  // ============================================================================
+  Timer? _searchDebounce;
 
-  // búsqueda + filtros
+  // ============================================================================
+  // ✅ 5) Datos (lista completa y lista visible)
+  // ----------------------------------------------------------------------------
+  // - _publicTrips: lista completa que llega del API
+  // - _visibleTrips: lista ya filtrada para pintar (OPTIMIZACIÓN)
+  //
+  // Idea: el build NO debe filtrar cada vez.
+  // ============================================================================
+  List<Trip> _publicTrips = const <Trip>[];
+  List<Trip> _visibleTrips = const <Trip>[];
+
+  // ============================================================================
+  // ✅ 6) Estado de búsqueda + filtros
+  // ============================================================================
   String _searchQuery = '';
   _TripFilters _filters = _TripFilters();
 
-  // control de animaciones
+  // ============================================================================
+  // ✅ 7) Control UI (publicidad + hint WhatsApp)
+  // ============================================================================
   bool _showAd = true;
   bool _showHint = false;
 
-  static const double _footerGap = 170;
+  bool get _hasActiveSearchOrFilters =>
+      _searchQuery.trim().isNotEmpty || !_filters.isEmpty;
+
+  // ============================================================================
+  // ✅ 8) Recalcular _visibleTrips SOLO cuando cambie algo importante
+  // ----------------------------------------------------------------------------
+  // Esto es el corazón de la optimización:
+  // - Antes: filtrabas dentro del build() (muchas veces por segundo).
+  // - Ahora: filtramos SOLO cuando:
+  //   * llega nueva data (_reload)
+  //   * cambia el texto de búsqueda
+  //   * se aplican/limpian filtros
+  // ============================================================================
+  void _recomputeVisibleTrips() {
+    // Si NO hay búsqueda ni filtros, no gastes CPU:
+    // mostramos directamente la lista completa.
+    if (_searchQuery.trim().isEmpty && _filters.isEmpty) {
+      if (!mounted) return;
+      setState(() => _visibleTrips = _publicTrips);
+      return;
+    }
+
+    // Si sí hay búsqueda/filtros, usamos tu lógica existente.
+    final computed = _applyFiltersTo(_publicTrips);
+
+    if (!mounted) return;
+    setState(() => _visibleTrips = computed);
+  }
+
+    // ✅ NUEVO: limpia lupita + filtros y recalcula
+  void _clearSearchAndFilters() {
+    _searchDebounce?.cancel();
+
+    if (!_hasActiveSearchOrFilters) return;
+
+    setState(() {
+      _searchQuery = '';
+      _filters = _TripFilters();
+    });
+
+    _recomputeVisibleTrips();
+  }
+
 
   @override
   void initState() {
     super.initState();
+
+    // 1) Cargar viajes (sin cambiar lógica)
     _reload();
+
+    // 2) Secuencia publicidad -> hint
     _startAdSequence();
+
+    // 3) Aura verde pulsante para "+ Registrar viaje"
+    _registerGlowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat(reverse: true);
+
+    _registerGlowAnimation = Tween<double>(begin: 0.0, end: 18.0).animate(
+      CurvedAnimation(
+        parent: _registerGlowController,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
+  @override
+  void dispose() {
+    // ✅ MUY IMPORTANTE: cancelar timers para evitar “memory leaks”
+    _searchDebounce?.cancel();
+
+    // ✅ Controller animación
+    _registerGlowController.dispose();
+    super.dispose();
+  }
+
+  // ============================================================================
+  // ✅ DATA
+  // ============================================================================
+
+  /// Recarga el listado público de viajes.
+  /// - Aquí es donde mañana podrías paginar.
+  /// - Después de recargar, recalculamos _visibleTrips UNA vez.
   Future<void> _reload() async {
     final data = await LoadsApi.fetchPublic(limit: 100);
     if (!mounted) return;
-    setState(() => _publicTrips = data);
+
+    setState(() {
+      _publicTrips = data;
+    });
+
+    // ✅ recalcula lo visible después de cambiar los datos
+    _recomputeVisibleTrips();
   }
 
+  /// Secuencia:
+  /// 1) Mostrar publicidad 5s
+  /// 2) Ocultar publicidad
+  /// 3) Mostrar hint WhatsApp y dejarlo fijo
   void _startAdSequence() {
-    // Secuencia:
-    // 1) Mostrar publicidad 5 s
-    // 2) Ocultar publicidad
-    // 3) Mostrar burbuja “¿Necesitas ayuda?” (y ahora NO se oculta)
     Timer(const Duration(seconds: 5), () {
       if (!mounted) return;
-      setState(() => _showAd = false);
-
-      // Mostramos la burbuja…
-      setState(() => _showHint = true);
-
-      // ⛔️ ELIMINA COMPLETAMENTE ESTE BLOQUE:
-      // Timer(const Duration(seconds: 5), () {
-      //   if (!mounted) return;
-      //   setState(() => _showHint = false);
-      // });
+      setState(() {
+        _showAd = false;
+        _showHint = true;
+      });
     });
   }
 
-
+  /// Abre WhatsApp en modo externo.
+  /// Si quieres cambiar el mensaje o el teléfono, edítalo aquí.
   Future<void> _openWhatsApp() async {
     const phone = '+573019043971';
+
     const message = '''
- Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación entre las partes y no asume responsabilidad alguna por la negociación o cumplimiento de los acuerdos. Puedo reportar irregularidades al correo electrónico: conexioncarga@gmail.com 
+ Tengo conocimiento de que Conexión Carga únicamente facilita la comunicación entre las partes y no asume responsabilidad alguna por la negociación o cumplimiento de los acuerdos. Puedo reportar irregularidades al Whatsapp +57 3019043971
 ''';
 
     final encodedMessage = Uri.encodeComponent(message);
@@ -118,7 +248,11 @@ class _StartPageState extends State<StartPage> {
     }
   }
 
-  // ------------------- BÚSQUEDA -------------------
+  // ============================================================================
+  // ✅ BÚSQUEDA (LUPITA)
+  // ============================================================================
+
+  /// Modal de búsqueda (igual a tu versión, pero con debounce + recompute)
   void _openSearchSheet() {
     final controller = TextEditingController(text: _searchQuery);
 
@@ -153,18 +287,33 @@ class _StartPageState extends State<StartPage> {
                     icon: const Icon(Icons.clear),
                     onPressed: () {
                       controller.clear();
+
+                      // 1) limpia query
                       setState(() {
                         _searchQuery = '';
                       });
+
+                      // 2) recalcula lista visible (una vez)
+                      _recomputeVisibleTrips();
                     },
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
+
+                // ✅ Debounce: espera 200ms después de escribir
                 onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
+                  _searchDebounce?.cancel();
+                  _searchDebounce =
+                      Timer(const Duration(milliseconds: 200), () {
+                    if (!mounted) return;
+
+                    setState(() {
+                      _searchQuery = value;
+                    });
+
+                    _recomputeVisibleTrips();
                   });
                 },
               ),
@@ -183,7 +332,10 @@ class _StartPageState extends State<StartPage> {
     );
   }
 
-  // ------------------- FILTROS -------------------
+  // ============================================================================
+  // ✅ FILTROS (3 RAYITAS)
+  // ============================================================================
+
   void _openFiltersSheet() {
     if (_publicTrips.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -192,24 +344,25 @@ class _StartPageState extends State<StartPage> {
       return;
     }
 
-    // solo para saber si tiene sentido mostrar sliders
+    // (Se mantiene aunque no uses todas, por seguridad)
     final tonsValues = _publicTrips
         .map((t) => t.tons)
         .where((v) => v != null)
         .cast<double>()
         .toList();
+
     final priceValues = _publicTrips
         .map((t) => t.price)
         .where((v) => v != null)
         .cast<num>()
         .toList();
 
-    // ▶️ Rangos fijos pedidos
     const double tonsMin = kMinTons;
     const double tonsMax = kMaxTons;
     const double priceMin = kMinPrice;
     const double priceMax = kMaxPrice;
 
+    // Copia local para no afectar _filters hasta “Aplicar”
     _TripFilters local = _filters.copy();
 
     showModalBottomSheet<void>(
@@ -219,7 +372,7 @@ class _StartPageState extends State<StartPage> {
       builder: (ctx) {
         final bottom = MediaQuery.of(ctx).viewInsets.bottom;
 
-        String _fmtMillions(num v) {
+        String fmtMillions(num v) {
           final m = v / 1_000_000;
           return '${m.toStringAsFixed(1)} M';
         }
@@ -230,6 +383,7 @@ class _StartPageState extends State<StartPage> {
               local.minTons ?? tonsMin,
               local.maxTons ?? tonsMax,
             );
+
             final priceRange = RangeValues(
               (local.minPrice ?? priceMin).toDouble(),
               (local.maxPrice ?? priceMax).toDouble(),
@@ -250,7 +404,6 @@ class _StartPageState extends State<StartPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-
                     _FilterTextField(
                       label: 'Origen',
                       initialValue: local.origin,
@@ -276,12 +429,6 @@ class _StartPageState extends State<StartPage> {
                           setModalState(() => local.vehicle = v.trim()),
                     ),
                     _FilterTextField(
-                      label: 'Estado',
-                      initialValue: local.estado,
-                      onChanged: (v) =>
-                          setModalState(() => local.estado = v.trim()),
-                    ),
-                    _FilterTextField(
                       label: 'Comercial',
                       initialValue: local.comercial,
                       onChanged: (v) =>
@@ -293,15 +440,9 @@ class _StartPageState extends State<StartPage> {
                       onChanged: (v) =>
                           setModalState(() => local.contacto = v.trim()),
                     ),
-                    _FilterTextField(
-                      label: 'Conductor',
-                      initialValue: local.conductor,
-                      onChanged: (v) =>
-                          setModalState(() => local.conductor = v.trim()),
-                    ),
                     const SizedBox(height: 8),
 
-                    // rango toneladas
+                    // ---- Slider de toneladas ----
                     if (tonsValues.isNotEmpty) ...[
                       const Text(
                         'Peso (Toneladas)',
@@ -328,11 +469,11 @@ class _StartPageState extends State<StartPage> {
                       ),
                     ],
 
-                    // rango precio
+                    // ---- Slider de precio ----
                     if (priceValues.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       const Text(
-                        'Valor del viaje (millones de pesos)',
+                        'Valor flete (millones de pesos)',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -342,16 +483,14 @@ class _StartPageState extends State<StartPage> {
                         values: priceRange,
                         min: priceMin,
                         max: max(priceMax, priceMin + 1),
-                        // pasos de 0.5 millones
                         divisions:
                             ((priceMax - priceMin) ~/ 500000).clamp(1, 1000),
                         labels: RangeLabels(
-                          _fmtMillions(priceRange.start),
-                          _fmtMillions(priceRange.end),
+                          fmtMillions(priceRange.start),
+                          fmtMillions(priceRange.end),
                         ),
                         onChanged: (values) {
                           setModalState(() {
-                            // los valores siguen en pesos, solo el label está en millones
                             local.minPrice = values.start;
                             local.maxPrice = values.end;
                           });
@@ -363,22 +502,33 @@ class _StartPageState extends State<StartPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
+                        // ✅ Limpiar filtros
                         TextButton.icon(
                           onPressed: () {
                             setState(() {
                               _filters = _TripFilters();
                             });
+
                             Navigator.pop(ctx);
+
+                            // ✅ recalcular lista visible una vez
+                            _recomputeVisibleTrips();
                           },
                           icon: const Icon(Icons.refresh),
                           label: const Text('Limpiar filtros'),
                         ),
+
+                        // ✅ Aplicar filtros
                         ElevatedButton(
                           onPressed: () {
                             setState(() {
                               _filters = local;
                             });
+
                             Navigator.pop(ctx);
+
+                            // ✅ recalcular lista visible una vez
+                            _recomputeVisibleTrips();
                           },
                           child: const Text('Aplicar filtros'),
                         ),
@@ -394,28 +544,100 @@ class _StartPageState extends State<StartPage> {
     );
   }
 
-  // aplicar búsqueda + filtros sobre la lista original
-  List<Trip> _applyFiltersTo(List<Trip> source) {
-    final q = _searchQuery.trim().toLowerCase();
+  // ============================================================================
+  // ✅ NORMALIZACIÓN ESPAÑOL
+  // ----------------------------------------------------------------------------
+  // Esto es tu “magia” para:
+  // - medellin → Medellín
+  // - san jose → San José
+  // - penol → Peñol
+  //
+  // 1) lowerCase
+  // 2) quitar tildes/diéresis
+  // 3) ñ → n
+  // ============================================================================
+  String _normalizeEs(String? input) {
+    if (input == null) return '';
+    final lower = input.toLowerCase();
+    final buffer = StringBuffer();
 
-    bool containsIgnore(String? value, String pattern) {
-      if (pattern.trim().isEmpty) return true;
-      if (value == null || value.trim().isEmpty) return false;
-      return value.toLowerCase().contains(pattern.toLowerCase());
+    for (int i = 0; i < lower.length; i++) {
+      final ch = lower[i];
+      switch (ch) {
+        case 'á':
+        case 'à':
+        case 'ä':
+        case 'â':
+        case 'ã':
+          buffer.write('a');
+          break;
+        case 'é':
+        case 'è':
+        case 'ë':
+        case 'ê':
+          buffer.write('e');
+          break;
+        case 'í':
+        case 'ì':
+        case 'ï':
+        case 'î':
+          buffer.write('i');
+          break;
+        case 'ó':
+        case 'ò':
+        case 'ö':
+        case 'ô':
+        case 'õ':
+          buffer.write('o');
+          break;
+        case 'ú':
+        case 'ù':
+        case 'ü':
+        case 'û':
+          buffer.write('u');
+          break;
+        case 'ñ':
+          buffer.write('n');
+          break;
+        default:
+          buffer.write(ch);
+      }
     }
 
-    return source.where((t) {
-      // filtros de texto
-      if (!containsIgnore(t.origin, _filters.origin)) return false;
-      if (!containsIgnore(t.destination, _filters.destination)) return false;
-      if (!containsIgnore(t.cargoType, _filters.cargoType)) return false;
-      if (!containsIgnore(t.vehicle, _filters.vehicle)) return false;
-      if (!containsIgnore(t.estado, _filters.estado)) return false;
-      if (!containsIgnore(t.comercial, _filters.comercial)) return false;
-      if (!containsIgnore(t.contacto, _filters.contacto)) return false;
-      if (!containsIgnore(t.conductor, _filters.conductor)) return false;
+    return buffer.toString();
+  }
 
-      // rangos numéricos
+  /// “Fuzzy contains” para español
+  bool _fuzzyContainsEs(String? text, String pattern) {
+    final normalizedPattern = _normalizeEs(pattern).trim();
+    if (normalizedPattern.isEmpty) return true;
+    if (text == null || text.trim().isEmpty) return false;
+
+    final normalizedText = _normalizeEs(text);
+    return normalizedText.contains(normalizedPattern);
+  }
+
+  // ============================================================================
+  // ✅ APLICAR BÚSQUEDA + FILTROS (SIN CAMBIAR TU LÓGICA)
+  // ----------------------------------------------------------------------------
+  // Importante:
+  // - Esta función puede ser costosa si se llama 100 veces por segundo.
+  // - Por eso ahora solo se llama dentro de _recomputeVisibleTrips().
+  // ============================================================================
+  List<Trip> _applyFiltersTo(List<Trip> source) {
+    final normalizedQuery = _normalizeEs(_searchQuery.trim());
+
+    return source.where((t) {
+      if (!_fuzzyContainsEs(t.origin, _filters.origin)) return false;
+      if (!_fuzzyContainsEs(t.destination, _filters.destination)) return false;
+      if (!_fuzzyContainsEs(t.cargoType, _filters.cargoType)) return false;
+      if (!_fuzzyContainsEs(t.vehicle, _filters.vehicle)) return false;
+      if (!_fuzzyContainsEs(t.estado, _filters.estado)) return false;
+      if (!_fuzzyContainsEs(t.comercial, _filters.comercial)) return false;
+      if (!_fuzzyContainsEs(t.contacto, _filters.contacto)) return false;
+      if (!_fuzzyContainsEs(t.conductor, _filters.conductor)) return false;
+
+      // rangos
       if (_filters.minTons != null) {
         if (t.tons == null || t.tons! < _filters.minTons!) return false;
       }
@@ -432,7 +654,7 @@ class _StartPageState extends State<StartPage> {
       }
 
       // búsqueda libre
-      if (q.isEmpty) return true;
+      if (normalizedQuery.isEmpty) return true;
 
       final buffer = StringBuffer()
         ..write(t.origin)
@@ -455,348 +677,121 @@ class _StartPageState extends State<StartPage> {
         ..write(' ')
         ..write(t.price?.toString() ?? '');
 
-      final haystack = buffer.toString().toLowerCase();
-      return haystack.contains(q);
+      final haystackNorm = _normalizeEs(buffer.toString());
+      return haystackNorm.contains(normalizedQuery);
     }).toList();
   }
 
+  // ============================================================================
+  // ✅ BUILD (StartPage ahora es orquestador)
+  // ----------------------------------------------------------------------------
+  // Importante:
+  // - El build NO filtra.
+  // - Solo usa _visibleTrips que ya viene calculado.
+  // ============================================================================
   @override
   Widget build(BuildContext context) {
     final myId = AuthSession.instance.user.value?.id ?? '';
-    final trips = _applyFiltersTo(_publicTrips);
+    final trips = _visibleTrips;
+
     final appColors =
         Theme.of(context).extension<AppColors>() ?? AppColors.light();
+
+    final isPortrait =
+        MediaQuery.of(context).orientation == Orientation.portrait;
+
+    final int tripsCount = trips.length;
+    final bool showCounterBubble = _hasActiveSearchOrFilters;
+
+    final bool showCleanFilter = showCounterBubble && tripsCount == 0;
+    final bool cleanEnabled = _publicTrips.isNotEmpty && _hasActiveSearchOrFilters;
+
 
     return Scaffold(
       appBar: _buildAppBar(),
       body: Stack(
         children: [
-          // ─────────────── CONTENIDO PRINCIPAL ───────────────
+          // ----------------------
+          // CONTENIDO PRINCIPAL
+          // ----------------------
           Column(
             children: [
-              _buildHeaderButtons(context),
+              // Header (botones arriba)
+              StartHeader(
+                registerGlowAnimation: _registerGlowAnimation,
+                onTripsChanged: _reload,
+              ),
+
+              // Burbuja conteo solo si hay búsqueda/filtros
+             if (showCounterBubble)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SearchCountBubble(count: tripsCount),
+                      if (showCleanFilter) ...[
+                        const SizedBox(width: 8),
+                        CleanFilter(
+                          enabled: cleanEnabled,
+                          onTap: cleanEnabled ? _clearSearchAndFilters : null,
+                          showLabel: false, // 👈 compacto para que no reviente en móvil
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+
+              // Grid de viajes
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _reload,
-                  child: GridView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, _footerGap),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.86,
-                    ),
-                    itemCount: trips.length,
-                    itemBuilder: (ctx, i) {
-                      final t = trips[i];
-                      final isMine = t.comercialId == myId;
-
-                      return GestureDetector(
-                        onTap: () async {
-                          final changed =
-                              await Navigator.of(context).push<bool>(
-                            MaterialPageRoute(
-                              builder: (_) => TripDetailPage(trip: t),
-                            ),
-                          );
-
-                          // si el detalle cerró con Navigator.pop(context, true);
-                          // volvemos a consultar los viajes del backend
-                          if (changed == true) {
-                            await _reload();
-                          }
-                        },
-                        child: LoadCard(trip: t, isMine: isMine),
-                      );
-                    },
+                  child: TripsGrid(
+                    trips: trips,
+                    myId: myId,
+                    onTripsChanged: _reload,
                   ),
                 ),
               ),
             ],
           ),
 
-          // ─────────────── FOOTER ───────────────
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Material(
-              elevation: 12,
-              color: Theme.of(context).scaffoldBackgroundColor,
-              child: BottomBannerSection(
-                donationNumber: '0091262121',
-                onTapDonation: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const DonationPage(),
-                    ),
-                  );
-                },
-              ),
-            ),
+          // Footer fijo
+          StartFooterBanner(
+            donationNumber: '0091262121',
+            onTapDonation: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DonationPage()),
+              );
+            },
           ),
 
-          // ─────────────── IMAGEN DE PUBLICIDAD ───────────────
-          AnimatedSlide(
-            offset: _showAd ? Offset.zero : const Offset(0, 1.2),
-            duration: const Duration(milliseconds: 900),
-            curve: Curves.easeInOut,
-            child: AnimatedOpacity(
-              opacity: _showAd ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 1200),
-              child: Container(
-                color: Colors.black.withOpacity(0.4),
-                alignment: Alignment.center,
-                child: Image.asset(_adImage, fit: BoxFit.contain),
-              ),
-            ),
+          // Publicidad overlay (solo vertical)
+          AdOverlay(
+            isPortrait: isPortrait,
+            showAd: _showAd,
+            imageAsset: _adImage,
           ),
 
-          // ─────────────── BOTÓN FLOTANTE WHATSAPP ───────────────
-          Positioned(
-            bottom: 180,
-            left: 16,
-            child: SafeArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // burbuja temporal “¿Dudas?”
-                  if (_showHint)
-                    Container(
-                      decoration: BoxDecoration(
-                        color: appColors.helpBubbleBg,
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 4,
-                            offset: const Offset(1, 2),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      margin: const EdgeInsets.only(bottom: 6),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            '¿Necesitas ayuda?',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  // botón circular fijo
-                  GestureDetector(
-                    onTap: _openWhatsApp,
-                    child: Container(
-                      width: 46,
-                      height: 46,
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: kGreenStrong,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 6,
-                            offset: Offset(2, 2),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Image.asset(
-                          _whatsappIcon,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          // WhatsApp + hint
+          WhatsAppHelpButton(
+            showHint: _showHint,
+            helpBubbleBg: appColors.helpBubbleBg,
+            iconAsset: _whatsappIcon,
+            onTap: _openWhatsApp,
           ),
         ],
       ),
     );
   }
 
-  // ===================== Header =====================
-  Widget _buildHeaderButtons(BuildContext context) {
-    final user = AuthSession.instance.user.value;
-    final bool isDriver = user?.isDriver ?? false;  // 👈 NUEVO
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final bg = isLight ? kGreenStrong : kDeepDarkGreen;
-    final fg = isLight ? Colors.white : kGreyText;
-
-    Widget compact(NewActionFab btn) => SizedBox(
-          height: 40,
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: IconTheme(
-              data: const IconThemeData(size: 16),
-              child: MediaQuery(
-                data: MediaQuery.of(context).copyWith(
-                  textScaler: const TextScaler.linear(0.90),
-                ),
-                child: btn,
-              ),
-            ),
-          ),
-        );
-
-    if (user == null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Expanded(
-              child: compact(
-                NewActionFab(
-                  label: 'Iniciar sesión',
-                  icon: Icons.login,
-                  backgroundColor: bg,
-                  foregroundColor: fg,
-                  onTap: () async {
-                    final ok = await Navigator.of(context).push<bool>(
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
-                    );
-                    if (ok == true && mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('¡Bienvenido!')),
-                      );
-                      await _reload();
-                    }
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: compact(
-                NewActionFab(
-                  label: 'Registrarse',
-                  icon: Icons.person_add,
-                  backgroundColor: bg,
-                  foregroundColor: fg,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const RegistrationFormPage(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-        Expanded(
-          child: compact(
-            NewActionFab(
-              label: '+ Registrar viaje',
-              icon: Icons.add_road,
-              backgroundColor: isDriver ? Colors.grey : bg,  // gris si es conductor
-              foregroundColor: fg,
-              onTap: () {
-                // Si es conductor, NO dejar registrar viaje
-                if (isDriver) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Como conductor no puedes registrar viajes.'),
-                    ),
-                  );
-                  return;
-                }
-
-                // Si NO es conductor, flujo normal
-                Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
-                        builder: (_) => const NewTripPage(),
-                      ),
-                    )
-                    .then((changed) async {
-                  if (changed == true) {
-                    await _reload();
-                  }
-                });
-              },
-            ),
-          ),
-        ),
-
-          const SizedBox(width: 12),
-          Expanded(
-            child: compact(
-              NewActionFab(
-                label: 'Mis viajes',
-                icon: Icons.local_shipping_outlined,
-                backgroundColor: isDriver ? Colors.grey : bg,  
-                foregroundColor: fg,
-                onTap: () {
-                // Si es conductor, NO dejar registrar viaje
-                if (isDriver) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Como conductor no puedes registrar viajes.'),
-                    ),
-                  );
-                  return;
-                }
-
-                // Si NO es conductor, flujo normal
-                Navigator.of(context)
-                    .push(
-                      MaterialPageRoute(
-                        builder: (_) => const MyLoadsPage(),
-                      ),
-                    )
-                    .then((changed) async {
-                  if (changed == true) {
-                    await _reload();
-                  }
-                });
-              }
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: compact(
-              NewActionFab(
-                label: 'Mis puntos',
-                icon: Icons.card_giftcard_outlined,
-                backgroundColor: kBrandOrange,
-                foregroundColor: Colors.white,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const PointsPage()),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ===================== AppBar =====================
+  // ============================================================================
+  // ✅ APPBAR (se deja aquí porque usa _profileKey y menús)
+  // ============================================================================
   PreferredSizeWidget _buildAppBar() {
     final isLight = Theme.of(context).brightness == Brightness.light;
 
@@ -817,6 +812,7 @@ class _StartPageState extends State<StartPage> {
               (user != null && user.firstName.trim().isNotEmpty)
                   ? 'Bienvenido ${user.firstName}'
                   : widget.userName;
+
           return FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -838,10 +834,7 @@ class _StartPageState extends State<StartPage> {
                     icon: const Icon(Icons.person_outline),
                     onPressed: _openProfileMenu,
                   ),
-                GlyphFilter(
-                  size: 20,
-                  onTap: _openFiltersSheet,
-                ),
+                GlyphFilter(size: 20, onTap: _openFiltersSheet),
                 const ThemeToggle(size: 22),
                 const SizedBox(width: 8),
               ],
@@ -852,6 +845,7 @@ class _StartPageState extends State<StartPage> {
     );
   }
 
+  /// Menú del perfil (igual)
   Future<void> _openProfileMenu() async {
     final ro = _profileKey.currentContext?.findRenderObject();
     if (ro is! RenderBox) return;
@@ -883,12 +877,11 @@ class _StartPageState extends State<StartPage> {
             padding: const EdgeInsets.all(12),
             child: Opacity(
               opacity: 0.45,
-              child: NewActionFab(
+              child: _DisabledActionButton(
                 label: 'Editar perfil',
                 icon: Icons.edit_outlined,
-                backgroundColor: bg,
-                foregroundColor: fg,
-                onTap: () {},
+                bg: bg,
+                fg: fg,
               ),
             ),
           ),
@@ -899,12 +892,10 @@ class _StartPageState extends State<StartPage> {
           padding: EdgeInsets.zero,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: NewActionFab(
-              label: 'Cerrar sesión',
-              icon: Icons.logout,
-              backgroundColor: bg,
-              foregroundColor: fg,
-              onTap: () {
+            child: _LogoutActionButton(
+              bg: bg,
+              fg: fg,
+              onLogout: () {
                 Navigator.pop(context);
                 AuthSession.instance.signOut();
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -920,7 +911,88 @@ class _StartPageState extends State<StartPage> {
   }
 }
 
-// ===================== Clases auxiliares =====================
+/// ---------------------------------------------------------------------------
+/// Helpers del menú de perfil
+/// ---------------------------------------------------------------------------
+
+class _DisabledActionButton extends StatelessWidget {
+  const _DisabledActionButton({
+    required this.label,
+    required this.icon,
+    required this.bg,
+    required this.fg,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color bg;
+  final Color fg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: fg, size: 18),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LogoutActionButton extends StatelessWidget {
+  const _LogoutActionButton({
+    required this.bg,
+    required this.fg,
+    required this.onLogout,
+  });
+
+  final Color bg;
+  final Color fg;
+  final VoidCallback onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onLogout,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.logout, color: fg, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              'Cerrar sesión',
+              style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// ✅ Clases auxiliares (sin cambios funcionales)
+// ============================================================================
+
 class _TripFilters {
   String origin;
   String destination;
@@ -986,7 +1058,6 @@ class _FilterTextField extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   const _FilterTextField({
-    super.key,
     required this.label,
     required this.initialValue,
     required this.onChanged,

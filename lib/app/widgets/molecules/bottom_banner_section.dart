@@ -20,19 +20,13 @@ class BottomBannerSection extends StatelessWidget {
     required this.donationNumber,
     this.onTapDonation,
     this.carouselImages = const [
-      'assets/images/ad_start_small.png',
+      'assets/images/como_participar.png',
       'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
-      'assets/images/proximamente_V2.png',
-      'assets/images/gana_premios_completo.png',
       'assets/images/gana_premios_tres_pasos.png',
-      'assets/images/gana_premios_nueve_pasos_1.png',
-      'assets/images/gana_premios_nueve_pasos_2.png',
-      'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
-      'assets/images/proximamente_V2.png',
+      'assets/images/gana_premios_con_conexion_carga.png',
       'assets/images/con_tu_apoyo.png',
       'assets/images/qr_inferior.png',
-      'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
-
+  
 
     ],
     this.carouselHeight = 140, 

@@ -15,7 +15,7 @@ publish_to: 'none'
 # ✅ IMPORTANTE para Play Store:
 # - versionName: 1.0.0
 # - versionCode: +1 (este SIEMPRE debe subir en cada subida a Play)
-version: 1.0.0+2
+version: 1.0.0+3
 
 environment:
   sdk: ^3.9.0

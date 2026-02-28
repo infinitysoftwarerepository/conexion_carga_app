@@ -20,12 +20,12 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.conexion_carga_app.conexioncarga"
+    namespace = "com.infinitysoftware.conexioncarga"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     defaultConfig {
-        applicationId = "com.conexion_carga_app.conexioncarga"
+        applicationId = "com.infinitysoftware.conexioncarga"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

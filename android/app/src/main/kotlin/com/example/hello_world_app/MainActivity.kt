@@ -1,4 +1,4 @@
-package com.example.conexion_carga_app
+package com.infinitysoftware.conexioncarga
 
 import io.flutter.embedding.android.FlutterActivity
 

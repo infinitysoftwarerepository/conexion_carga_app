@@ -9,7 +9,7 @@ publish_to: 'none'
 # Contacto: infinitysoftware62@gmail.com
 # ============================================================
 
-version: 1.0.0+9
+version: 1.0.0+10
 
 environment:
   sdk: ^3.9.0

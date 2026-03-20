@@ -158,8 +158,13 @@ class _PointsPageState extends State<PointsPage> {
       )
       ..writeln('')
       ..writeln(
-        '*Enlace directo de Android (solo respaldo):* $androidStoreUrl',
-      );
+        '*Enlace directo de Android (Google Play):* $androidStoreUrl',
+      )
+      ..writeln('')
+      ..writeln(
+        'Próximamente en AppStore (iPhone)'
+      )
+      ;
 
     await Clipboard.setData(
       ClipboardData(text: msg.toString()),

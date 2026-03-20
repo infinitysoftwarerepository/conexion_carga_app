@@ -42,15 +42,6 @@ class _PointsPageState extends State<PointsPage> {
   static const String androidStoreUrl =
       'https://play.google.com/store/apps/details?id=com.infinitysoftware.conexioncarga';
 
-  static const String iosStoreUrl =
-      'https://apps.apple.com/app/id0000000000';
-
-  // ✅ Link limpio de registro con referido
-  // Si más adelante usas conexioncarga.com en vez de conexioncarga.app,
-  // cambia solo esta constante.
-  static const String referralRegisterBaseUrl =
-      'https://conexioncarga.app/register';
-
   String get _firstName {
     final u = AuthSession.instance.user.value;
     final fn = (u?.firstName ?? '').trim();
@@ -146,22 +137,28 @@ class _PointsPageState extends State<PointsPage> {
       return;
     }
 
-    final registerLink = Uri.parse(referralRegisterBaseUrl).replace(
+    final registerLink = Uri.parse('${Env.baseUrl}/register').replace(
       queryParameters: {
         'ref': email,
       },
     ).toString();
 
     final msg = StringBuffer()
-      ..writeln('*Descarga la app Conexión Carga desde mi enlace de referido!* 🚚')
+      ..writeln('*Únete a Conexión Carga con mi enlace de referido* 🚚')
       ..writeln('')
-      ..writeln('*Android:* $androidStoreUrl')
-      ..writeln('*iOS:* $iosStoreUrl')
-      ..writeln('')
-      ..writeln('*Registro con mi referido:* $registerLink')
+      ..writeln('*Abre este enlace desde tu Android:*')
+      ..writeln(registerLink)
       ..writeln('')
       ..writeln(
-        'Descarga la app y luego ábrela desde este enlace, te llevará al formulario de registro autocompletando la casilla de referido con mi correo.',
+        'Si ya tienes la app instalada, se abrirá el formulario de registro con mi correo autocompletado en el campo de referido.',
+      )
+      ..writeln('')
+      ..writeln(
+        'Si aún no tienes la app, el enlace te llevará a descargarla. Cuando termine la instalación, vuelve a abrir este mismo enlace para conservar el referido.',
+      )
+      ..writeln('')
+      ..writeln(
+        '*Enlace directo de Android (solo respaldo):* $androidStoreUrl',
       );
 
     await Clipboard.setData(

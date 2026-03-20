@@ -35,8 +35,13 @@ class Bootstrap extends StatelessWidget {
     }
 
     final path = uri.path.isEmpty ? '/' : uri.path;
+    final normalizedPath =
+        path.endsWith('/') && path.length > 1 ? path.substring(0, path.length - 1) : path;
+    final isRegisterRoute =
+        normalizedPath == '/register' ||
+        (uri.scheme == 'conexioncarga' && uri.host.toLowerCase() == 'register');
 
-    if (path == '/register') {
+    if (isRegisterRoute) {
       final ref = uri.queryParameters['ref']?.trim();
       return MaterialPageRoute(
         settings: settings,

@@ -9,13 +9,7 @@ publish_to: 'none'
 # Contacto: infinitysoftware62@gmail.com
 # ============================================================
 
-
-
-
-# ✅ IMPORTANTE para Play Store:
-# - versionName: 1.0.0
-# - versionCode: +1 (este SIEMPRE debe subir en cada subida a Play)
-version: 1.0.0+3
+version: 1.0.0+9
 
 environment:
   sdk: ^3.9.0
@@ -24,63 +18,34 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # =========================
-  # WEBVIEW (para reCAPTCHA/HTML)
-  # =========================
-  # ✅ Puedes usar 4.13.0 estable (min Dart 3.6) o quedarte en 4.10.0 si ya te funciona.
   webview_flutter: ^4.13.0
-
-  # =========================
-  # reCAPTCHA
-  # =========================
-  # ⚠️ NOTA:
-  # - Si tu implementación final usa tu propio WebView + HTML + token,
-  #   este paquete podría NO ser necesario (depende de tu arquitectura).
-  # - Pero si lo vas a mantener, NO uses 'any'.
   flutter_easy_recaptcha_v2: ^0.1.0
 
-  # =========================
-  # UTILIDADES
-  # =========================
   shared_preferences: ^2.2.2
   http: ^1.2.2
   intl: ^0.19.0
+
   font_awesome_flutter: ^10.7.0
   google_fonts: ^6.2.1
   cupertino_icons: ^1.0.8
   url_launcher: ^6.3.0
   open_filex: ^4.7.0
   path_provider: ^2.1.5
-
-  # =========================
-  # COMPARTIR
-  # =========================
-  # ✅ Tú estabas en 10.0.0.
-  # Si tu código usa la API vieja (Share.share), mantener 10.x evita cambios grandes.
   share_plus: ^10.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
   flutter_lints: ^5.0.0
-
-  # ✅ No uses 'any' aquí tampoco:
   flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
-
-  # ✅ Assets:
-  # - Si incluyes una carpeta (assets/images/), NO necesitas poner el archivo individual.
-  # - Lo dejo limpio para evitar redundancias.
   assets:
     - assets/images/
     - assets/icons/
     - assets/docs/
 
-# ✅ Config de iconos (solo si ejecutas el comando de generación)
-# flutter pub run flutter_launcher_icons
 flutter_icons:
   android: true
   ios: true

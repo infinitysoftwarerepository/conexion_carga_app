@@ -81,28 +81,24 @@ const kDocTypes = <DocTypeOption>[
 ];
 
 class RegistrationFormPage extends StatefulWidget {
-  const RegistrationFormPage({super.key});
+  final String? initialReferrerEmail;
+
+  const RegistrationFormPage({
+    super.key,
+    this.initialReferrerEmail,
+  });
 
   @override
   State<RegistrationFormPage> createState() => _RegistrationFormPageState();
 }
 
 class _RegistrationFormPageState extends State<RegistrationFormPage> {
-  // ------------------------
-  // 1) Flags “de compilación”
-  // ------------------------
-  // ✅ El cliente NO toca código: solo compila con:
-  // flutter build apk --release --dart-define=ENABLE_RECAPTCHA=true --dart-define=RECAPTCHA_SITE_KEY=...
   static const bool _enableRecaptchaDefine =
       bool.fromEnvironment('ENABLE_RECAPTCHA', defaultValue: false);
 
   static const String _recaptchaSiteKey =
       String.fromEnvironment('RECAPTCHA_SITE_KEY', defaultValue: '');
 
-  // Regla de oro:
-  // - Chrome / Web: SIEMPRE placeholder (para que no se congele)
-  // - Debug: SIEMPRE placeholder (para probar UI sin fricción)
-  // - Release Android: reCAPTCHA real SOLO si el define está activo y hay site key
   bool get _shouldUseRealRecaptcha {
     if (kIsWeb) return false;
     if (kDebugMode) return false;
@@ -111,9 +107,6 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     return true;
   }
 
-  // ------------------------
-  // 2) Controladores / estado
-  // ------------------------
   final _controller = RegistrationController();
   final _verificationApi = const VerificationApi();
 
@@ -135,24 +128,48 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
   bool _acepto = false;
   bool _isLoading = false;
 
-  // ------------------------
-  // 3) Estado del reCAPTCHA
-  // ------------------------
-  // En DEBUG/WEB esto se ignora (placeholder).
-  String? _captchaToken; // se llena cuando el usuario “pasa” el reCAPTCHA real.
+  String? _captchaToken;
+
+  bool _didApplyInitialReferrer = false;
 
   bool get _needsCompany =>
       _selectedOccupation != null && _selectedOccupation!.requiresCompany;
 
-  // ------------------------
-  // 4) Validación contraseña
-  // ------------------------
   bool _isStrongPassword(String value) {
     final hasMinLength = value.length >= 8;
     final hasLetter = RegExp(r'[A-Za-z]').hasMatch(value);
     final hasNumber = RegExp(r'\d').hasMatch(value);
     final hasSymbol = RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-]').hasMatch(value);
     return hasMinLength && hasLetter && hasNumber && hasSymbol;
+  }
+
+  void _applyInitialReferrer(String? rawValue) {
+    if (_didApplyInitialReferrer) return;
+
+    final value = (rawValue ?? '').trim();
+    if (value.isEmpty) return;
+
+    _referrerEmailCtrl.text = value;
+    _didApplyInitialReferrer = true;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _applyInitialReferrer(widget.initialReferrerEmail);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didApplyInitialReferrer) return;
+
+    final routeName = ModalRoute.of(context)?.settings.name ?? '';
+    final routeUri = Uri.tryParse(routeName);
+    final refFromRoute = routeUri?.queryParameters['ref'];
+
+    _applyInitialReferrer(refFromRoute);
   }
 
   @override

@@ -2,11 +2,11 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // 👈 Clipboard
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:flutter/gestures.dart'; // 👈 para link azul
-import 'package:url_launcher/url_launcher.dart'; // 👈 abrir URL
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:conexion_carga_app/core/env.dart';
 import 'package:conexion_carga_app/core/auth_session.dart';
@@ -21,10 +21,8 @@ class PointsPage extends StatefulWidget {
 }
 
 class _PointsPageState extends State<PointsPage> {
-  // ✅ NUEVO: checkbox de términos del concurso
   bool _acceptedPromoTerms = false;
 
-  // ✅ NUEVO: abre términos del concurso desde el BACK
   Future<void> _openPromoTerms() async {
     const url = 'https://conexioncarga.com/promociones';
     final uri = Uri.parse(url);
@@ -39,18 +37,19 @@ class _PointsPageState extends State<PointsPage> {
 
   bool _loading = true;
   String? _error;
-
-  // filas ya ordenadas por puntos (desc)
   List<_Row> _items = [];
 
-  // ────────────────────────────────────────────────────────────
-  // URLs de referencia (CAMBIA ESTOS VALORES EN PROD)
-  // ────────────────────────────────────────────────────────────
-  static const String ANDROID_STORE_URL =
-      'https://play.google.com/store/apps/details?id=com.tuempresa.conexioncarga';
-  static const String IOS_STORE_URL =
+  static const String androidStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.infinitysoftware.conexioncarga';
+
+  static const String iosStoreUrl =
       'https://apps.apple.com/app/id0000000000';
-  static const String DEEP_LINK_BASE = 'https://conexioncarga.app/ref';
+
+  // ✅ Link limpio de registro con referido
+  // Si más adelante usas conexioncarga.com en vez de conexioncarga.app,
+  // cambia solo esta constante.
+  static const String referralRegisterBaseUrl =
+      'https://conexioncarga.app/register';
 
   String get _firstName {
     final u = AuthSession.instance.user.value;
@@ -80,7 +79,6 @@ class _PointsPageState extends State<PointsPage> {
 
       final List data = jsonDecode(res.body);
 
-      // Usuario actual para decidir si se enmascara o no
       final me = AuthSession.instance.user.value;
       final myEmail = (me?.email ?? '').toLowerCase();
 
@@ -93,12 +91,15 @@ class _PointsPageState extends State<PointsPage> {
             ? m['points'] as int
             : int.tryParse('${m['points']}') ?? 0;
 
-        rows.add(_Row(
-          email: email,
-          maskedEmail: email.toLowerCase() == myEmail ? email : _maskEmail(email),
-          idLast4: _last4(phone),
-          points: pts,
-        ));
+        rows.add(
+          _Row(
+            email: email,
+            maskedEmail:
+                email.toLowerCase() == myEmail ? email : _maskEmail(email),
+            idLast4: _last4(phone),
+            points: pts,
+          ),
+        );
       }
 
       rows.sort((a, b) => b.points.compareTo(a.points));
@@ -109,15 +110,19 @@ class _PointsPageState extends State<PointsPage> {
     } catch (e) {
       setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
   String _maskEmail(String email) {
     final parts = email.split('@');
     if (parts.length != 2) return email;
+
     final user = parts[0];
     final domain = parts[1];
+
     if (user.length <= 2) return '${user[0]}*****@$domain';
     return '${user[0]}*****${user[user.length - 1]}@$domain';
   }
@@ -128,9 +133,6 @@ class _PointsPageState extends State<PointsPage> {
     return '...${s.substring(s.length - 4)}';
   }
 
-  // ────────────────────────────────────────────────────────────
-  // Copiar enlace de referido al portapapeles
-  // ────────────────────────────────────────────────────────────
   Future<void> _copyReferralLink() async {
     final user = AuthSession.instance.user.value;
     final email = (user?.email ?? '').trim();
@@ -144,26 +146,33 @@ class _PointsPageState extends State<PointsPage> {
       return;
     }
 
-    final deepLink = Uri.parse(DEEP_LINK_BASE).replace(queryParameters: {
-      'ref': email,
-    }).toString();
+    final registerLink = Uri.parse(referralRegisterBaseUrl).replace(
+      queryParameters: {
+        'ref': email,
+      },
+    ).toString();
 
     final msg = StringBuffer()
       ..writeln('*Descarga la app Conexión Carga desde mi enlace de referido!* 🚚')
       ..writeln('')
-      ..writeln('*Android:* $ANDROID_STORE_URL')
-      ..writeln('*iOS:* $IOS_STORE_URL')
+      ..writeln('*Android:* $androidStoreUrl')
+      ..writeln('*iOS:* $iosStoreUrl')
       ..writeln('')
-      ..writeln('*Registro con mi referido:* $deepLink')
+      ..writeln('*Registro con mi referido:* $registerLink')
       ..writeln('')
       ..writeln(
-          'Al abrir el enlace, en la pantalla de registro verás el campo *Referido por (opcional)* autocompletado con mi correo.');
+        'Descarga la app y luego ábrela desde este enlace, te llevará al formulario de registro autocompletando la casilla de referido con mi correo.',
+      );
 
-    await Clipboard.setData(ClipboardData(text: msg.toString()));
+    await Clipboard.setData(
+      ClipboardData(text: msg.toString()),
+    );
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Enlace de referido copiado al portapapeles.')),
+      const SnackBar(
+        content: Text('Enlace de referido copiado al portapapeles.'),
+      ),
     );
   }
 
@@ -171,8 +180,6 @@ class _PointsPageState extends State<PointsPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
-
-    // ✅ Colores para que SIEMPRE se lea (claro y oscuro)
     final baseTextColor = isLight ? Colors.black87 : Colors.white70;
 
     return Scaffold(
@@ -186,10 +193,9 @@ class _PointsPageState extends State<PointsPage> {
             padding: const EdgeInsets.only(bottom: 2),
             child: Text(
               '¡ Aumenta tus puntos $_firstName !',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: cs.onSecondaryContainer.withOpacity(0.9)),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: cs.onSecondaryContainer.withOpacity(0.9),
+                  ),
             ),
           ),
         ),
@@ -198,43 +204,33 @@ class _PointsPageState extends State<PointsPage> {
           SizedBox(width: 8),
         ],
       ),
-
       body: Column(
         children: [
           const SizedBox(height: 10),
-
-          // ─────────────────────────────────────────────
-          // ✅ BLOQUE SUPERIOR: botón + términos (SIN OVERFLOW)
-          // ─────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Column(
               children: [
-                // ✅ Botón (se deshabilita si NO ha aceptado)
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
                     style: FilledButton.styleFrom(
                       backgroundColor: kBrandOrange,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    // ✅ clave: si es null, queda disabled y gris
                     onPressed: _acceptedPromoTerms ? _copyReferralLink : null,
                     icon: const Icon(Icons.link),
                     label: const Text('¡ Genera enlace de referido !'),
                   ),
                 ),
-
                 const SizedBox(height: 8),
-
-                // ✅ CAMBIO CLAVE (ANTI-OVERFLOW):
-                // En lugar de Row + Expanded, usamos CheckboxListTile.
-                // Esto evita overflow en dispositivos pequeños y permite saltos de línea.
                 Theme(
-                  // ✅ quitamos padding interno exagerado del ListTile
                   data: Theme.of(context).copyWith(
                     listTileTheme: const ListTileThemeData(
                       contentPadding: EdgeInsets.zero,
@@ -247,23 +243,21 @@ class _PointsPageState extends State<PointsPage> {
                     onChanged: (v) {
                       setState(() => _acceptedPromoTerms = v ?? false);
                     },
-
                     controlAffinity: ListTileControlAffinity.leading,
-
-                    // ✅ Esto hace que el texto pueda ocupar 2 líneas sin romper nada
                     dense: true,
-                    visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
-
-                    // ✅ el “texto” completo lo pintamos con RichText (incluye link azul)
+                    visualDensity:
+                        const VisualDensity(horizontal: -2, vertical: -2),
                     title: RichText(
                       text: TextSpan(
                         style: TextStyle(
-                          fontSize: 13, // 👈 aquí cambias tamaño del texto
-                          color: baseTextColor, // ✅ SIEMPRE visible
+                          fontSize: 13,
+                          color: baseTextColor,
                           height: 1.2,
                         ),
                         children: [
-                          const TextSpan(text: 'Acepto los términos del concurso '),
+                          const TextSpan(
+                            text: 'Acepto los términos del concurso ',
+                          ),
                           TextSpan(
                             text: '(ver términos)',
                             style: const TextStyle(
@@ -276,22 +270,16 @@ class _PointsPageState extends State<PointsPage> {
                           ),
                         ],
                       ),
-                      maxLines: 2, // ✅ máximo 2 líneas
-                      overflow: TextOverflow.ellipsis, // ✅ si es MUY pequeño, recorta
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       softWrap: true,
                     ),
                   ),
                 ),
-
-                // ✅ “correr la tabla un poquito para abajo”
                 const SizedBox(height: 10),
               ],
             ),
           ),
-
-          // ─────────────────────────────────────────────
-          // TABLA (igual que antes)
-          // ─────────────────────────────────────────────
           Expanded(
             child: _Body(
               loading: _loading,
@@ -327,6 +315,7 @@ class _Body extends StatelessWidget {
     if (loading) {
       return const Center(child: CircularProgressIndicator());
     }
+
     if (error != null) {
       return Center(
         child: Padding(
@@ -361,7 +350,6 @@ class _Body extends StatelessWidget {
             ),
           ),
         ),
-
         Expanded(
           child: RefreshIndicator(
             onRefresh: onRefresh,
@@ -384,7 +372,11 @@ class _Body extends StatelessWidget {
 }
 
 class _HeaderCell extends StatelessWidget {
-  const _HeaderCell({required this.label, required this.flex});
+  const _HeaderCell({
+    required this.label,
+    required this.flex,
+  });
+
   final String label;
   final int flex;
 
@@ -407,7 +399,10 @@ class _HeaderCell extends StatelessWidget {
 }
 
 class _RowTile extends StatelessWidget {
-  const _RowTile({required this.row, required this.rank});
+  const _RowTile({
+    required this.row,
+    required this.rank,
+  });
 
   final _Row row;
   final int rank;
@@ -467,7 +462,6 @@ class _RowTile extends StatelessWidget {
               ),
             ),
           ),
-
           Expanded(
             flex: 38,
             child: Center(
@@ -479,7 +473,6 @@ class _RowTile extends StatelessWidget {
               ),
             ),
           ),
-
           Expanded(
             flex: 24,
             child: Center(
@@ -491,12 +484,14 @@ class _RowTile extends StatelessWidget {
               ),
             ),
           ),
-
           Expanded(
             flex: 22,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: isLight ? kGreenStrong : kDarkGreen,
                   borderRadius: BorderRadius.circular(18),

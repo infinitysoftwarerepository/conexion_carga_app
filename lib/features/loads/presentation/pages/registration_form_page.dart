@@ -80,6 +80,44 @@ const kDocTypes = <DocTypeOption>[
   DocTypeOption('PPT', 'Permiso por Protección Temporal (PPT)'),
 ];
 
+
+class CountryPhoneOption {
+  final String iso2;
+  final String label;
+  final String phoneCode;
+  final String flag;
+
+  const CountryPhoneOption({
+    required this.iso2,
+    required this.label,
+    required this.phoneCode,
+    required this.flag,
+  });
+}
+
+const kCountryPhoneOptions = <CountryPhoneOption>[
+  CountryPhoneOption(iso2: 'CO', label: 'Colombia', phoneCode: '+57', flag: '🇨🇴'),
+  CountryPhoneOption(iso2: 'MX', label: 'México', phoneCode: '+52', flag: '🇲🇽'),
+  CountryPhoneOption(iso2: 'AR', label: 'Argentina', phoneCode: '+54', flag: '🇦🇷'),
+  CountryPhoneOption(iso2: 'CL', label: 'Chile', phoneCode: '+56', flag: '🇨🇱'),
+  CountryPhoneOption(iso2: 'PE', label: 'Perú', phoneCode: '+51', flag: '🇵🇪'),
+  CountryPhoneOption(iso2: 'EC', label: 'Ecuador', phoneCode: '+593', flag: '🇪🇨'),
+  CountryPhoneOption(iso2: 'VE', label: 'Venezuela', phoneCode: '+58', flag: '🇻🇪'),
+  CountryPhoneOption(iso2: 'BO', label: 'Bolivia', phoneCode: '+591', flag: '🇧🇴'),
+  CountryPhoneOption(iso2: 'PY', label: 'Paraguay', phoneCode: '+595', flag: '🇵🇾'),
+  CountryPhoneOption(iso2: 'UY', label: 'Uruguay', phoneCode: '+598', flag: '🇺🇾'),
+  CountryPhoneOption(iso2: 'BR', label: 'Brasil', phoneCode: '+55', flag: '🇧🇷'),
+  CountryPhoneOption(iso2: 'PA', label: 'Panamá', phoneCode: '+507', flag: '🇵🇦'),
+  CountryPhoneOption(iso2: 'CR', label: 'Costa Rica', phoneCode: '+506', flag: '🇨🇷'),
+  CountryPhoneOption(iso2: 'GT', label: 'Guatemala', phoneCode: '+502', flag: '🇬🇹'),
+  CountryPhoneOption(iso2: 'SV', label: 'El Salvador', phoneCode: '+503', flag: '🇸🇻'),
+  CountryPhoneOption(iso2: 'HN', label: 'Honduras', phoneCode: '+504', flag: '🇭🇳'),
+  CountryPhoneOption(iso2: 'NI', label: 'Nicaragua', phoneCode: '+505', flag: '🇳🇮'),
+  CountryPhoneOption(iso2: 'DO', label: 'República Dominicana', phoneCode: '+1', flag: '🇩🇴'),
+  CountryPhoneOption(iso2: 'US', label: 'Estados Unidos', phoneCode: '+1', flag: '🇺🇸'),
+  CountryPhoneOption(iso2: 'ES', label: 'España', phoneCode: '+34', flag: '🇪🇸'),
+];
+
 class RegistrationFormPage extends StatefulWidget {
   final String? initialReferrerEmail;
 
@@ -114,9 +152,11 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
   final _companyCtrl = TextEditingController();
 
   DocTypeOption? _selectedDocType;
+  CountryPhoneOption _selectedCountry = kCountryPhoneOptions.first;
 
   final _emailCtrl = TextEditingController();
   final _numIdCtrl = TextEditingController();
+  final _whatsAppCtrl = TextEditingController();
   final _nombresCtrl = TextEditingController();
   final _apellidosCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
@@ -177,6 +217,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
     _companyCtrl.dispose();
     _emailCtrl.dispose();
     _numIdCtrl.dispose();
+    _whatsAppCtrl.dispose();
     _nombresCtrl.dispose();
     _apellidosCtrl.dispose();
     _passCtrl.dispose();
@@ -256,9 +297,25 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
       return;
     }
 
-    if ((_numIdCtrl.text.trim()).isEmpty) {
+    final document = _numIdCtrl.text.trim();
+    if (document.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Ingresa tu número de identificación.')),
+      );
+      return;
+    }
+
+    final whatsappNumber = _whatsAppCtrl.text.trim().replaceAll(RegExp(r'\D+'), '');
+    if (whatsappNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa tu número WhatsApp.')),
+      );
+      return;
+    }
+
+    if (!RegExp(r'^\d{6,15}$').hasMatch(whatsappNumber)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ingresa un número WhatsApp válido.')),
       );
       return;
     }
@@ -316,7 +373,9 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
         email: email,
         firstName: _nombresCtrl.text.trim(),
         lastName: _apellidosCtrl.text.trim(),
-        phone: _numIdCtrl.text.trim(),
+        document: document,
+        phoneCode: _selectedCountry.phoneCode,
+        phoneNumber: whatsappNumber,
         isCompany: isCompany,
         isDriver: isDriver,
         companyName: _companyCtrl.text.trim(),
@@ -616,6 +675,78 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
                 icon: Icons.confirmation_number_outlined,
                 textInputAction: TextInputAction.next,
                 inputFormatters: const [],
+              ),
+              const SizedBox(height: 12),
+
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Número WhatsApp*',
+                  textAlign: TextAlign.left,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: cs.onSurface.withOpacity(0.75),
+                      ),
+                ),
+              ),
+              const SizedBox(height: 6),
+
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 170,
+                    child: DropdownButtonFormField<CountryPhoneOption>(
+                      value: _selectedCountry,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        prefixIcon: const Icon(Icons.flag_outlined),
+                        filled: true,
+                        fillColor: isLight ? Colors.white : cs.surface.withOpacity(0.95),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                      icon: const Icon(Icons.arrow_drop_down),
+                      items: kCountryPhoneOptions
+                          .map((country) => DropdownMenuItem(
+                                value: country,
+                                child: Text(
+                                  '${country.flag} ${country.phoneCode}',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedCountry = value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _whatsAppCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        hintText: 'Número de WhatsApp',
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        filled: true,
+                        fillColor: isLight ? Colors.white : cs.surface.withOpacity(0.95),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
 

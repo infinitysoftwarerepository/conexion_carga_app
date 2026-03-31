@@ -11,29 +11,33 @@ class RegistrationController {
     required String email,
     required String firstName,
     required String lastName,
-    required String phone,
+    required String document,
+    required String phoneCode,
+    required String phoneNumber,
     required bool isCompany,
-    required bool isDriver, 
+    required bool isDriver,
     required String? companyName,
     required String password,
     required String confirmPassword,
     required bool acceptedTerms,
-    String? referrerEmail, // nuevo
+    String? referrerEmail,
   }) async {
     if (!acceptedTerms) {
-      throw Exception("Debes aceptar los términos y condiciones.");
+      throw Exception('Debes aceptar los términos y condiciones.');
     }
     if (password != confirmPassword) {
-      throw Exception("Las contraseñas no coinciden.");
+      throw Exception('Las contraseñas no coinciden.');
     }
 
     final user = await _api.register(
       email: email,
       firstName: firstName,
       lastName: lastName,
-      phone: phone,
+      document: document,
+      phoneCode: phoneCode,
+      phoneNumber: phoneNumber,
       isCompany: isCompany,
-      isDriver: isDriver,                            
+      isDriver: isDriver,
       companyName: (isCompany ? companyName : null),
       password: password,
       confirmPassword: confirmPassword,

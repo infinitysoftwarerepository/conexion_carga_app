@@ -11,42 +11,48 @@ class UserApi {
     required String email,
     required String firstName,
     required String lastName,
-    required String phone,
+    required String document,
+    required String phoneCode,
+    required String phoneNumber,
     required bool isCompany,
-    required bool isDriver, 
+    required bool isDriver,
     String? companyName,
     required String password,
     required String confirmPassword,
     String? referrerEmail,
   }) async {
     final uri = Uri.parse('${Env.baseUrl}/api/users/register');
+    final normalizedPhoneNumber = phoneNumber.replaceAll(RegExp(r'\D+'), '');
+    final normalizedPhoneCode = phoneCode.startsWith('+') ? phoneCode : '+$phoneCode';
+    final fullPhone = '$normalizedPhoneCode$normalizedPhoneNumber';
 
     final body = <String, dynamic>{
-      "email": email,
-      "first_name": firstName,
-      "last_name": lastName,
-      "phone": phone,
-      "is_company": isCompany,
-      "is_driver": isDriver,
-      "company_name": companyName,
-      "password": password,
-      "confirm_password": confirmPassword,
-      if (referrerEmail != null) "referrer_email": referrerEmail,
+      'email': email,
+      'first_name': firstName,
+      'last_name': lastName,
+      'document': document,
+      'phone_code': normalizedPhoneCode,
+      'phone_number': normalizedPhoneNumber,
+      'phone': fullPhone,
+      'is_company': isCompany,
+      'is_driver': isDriver,
+      'company_name': companyName,
+      'password': password,
+      'confirm_password': confirmPassword,
+      if (referrerEmail != null) 'referrer_email': referrerEmail,
     };
 
     final res = await http.post(
       uri,
-      headers: {"Content-Type": "application/json"},
+      headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
 
-    // OK → devolvemos user
     if (res.statusCode == 200 || res.statusCode == 201) {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       return UserOut.fromJson(data);
     }
 
-    // Error → tratamos de extraer mensaje {detail: "..."}
     String message = 'Registro falló: [${res.statusCode}]';
     try {
       final m = jsonDecode(res.body);

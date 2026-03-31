@@ -77,6 +77,7 @@ class _PointsPageState extends State<PointsPage> {
       for (final it in data) {
         final m = (it as Map).cast<String, dynamic>();
         final email = (m['email'] ?? '').toString();
+        final document = (m['document'] ?? '').toString();
         final phone = (m['phone'] ?? '').toString();
         final pts = (m['points'] is int)
             ? m['points'] as int
@@ -87,7 +88,7 @@ class _PointsPageState extends State<PointsPage> {
             email: email,
             maskedEmail:
                 email.toLowerCase() == myEmail ? email : _maskEmail(email),
-            idLast4: _last4(phone),
+            idLast4: _last4(document.isNotEmpty ? document : phone),
             points: pts,
           ),
         );

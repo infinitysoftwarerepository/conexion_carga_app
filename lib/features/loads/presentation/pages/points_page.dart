@@ -144,27 +144,14 @@ class _PointsPageState extends State<PointsPage> {
     ).toString();
 
     final msg = StringBuffer()
-      ..writeln('*Únete a Conexión Carga con mi enlace de referido* 🚚')
-      ..writeln('')
-      ..writeln('*Abre este enlace desde tu Android:*')
-      ..writeln(registerLink)
-      ..writeln('')
-      ..writeln(
-        'Si ya tienes la app instalada, se abrirá el formulario de registro con mi correo autocompletado en el campo de referido.',
-      )
-      ..writeln('')
-      ..writeln(
-        'Si aún no tienes la app, el enlace te llevará a descargarla. Cuando termine la instalación, vuelve a abrir este mismo enlace para conservar el referido.',
-      )
-      ..writeln('')
-      ..writeln(
-        '*Enlace directo de Android (Google Play):* $androidStoreUrl',
-      )
-      ..writeln('')
-      ..writeln(
-        'Próximamente en AppStore (iPhone)'
-      )
-      ;
+  ..writeln('PASO 1')
+  ..writeln('*Descarga el APP para Android* 👇👇👇')
+  ..writeln(androidStoreUrl)
+  ..writeln('')
+  ..writeln('PASO 2')
+  ..writeln('📝 *Regístrate* 📝')
+  ..writeln('Debes usar este link 👇👇👇')
+  ..writeln(registerLink);
 
     await Clipboard.setData(
       ClipboardData(text: msg.toString()),

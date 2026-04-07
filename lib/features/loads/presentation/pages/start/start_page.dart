@@ -289,7 +289,7 @@ class _StartPageState extends State<StartPage>
     final platform = Platform.isIOS ? 'ios' : 'android';
     final prefs = await SharedPreferences.getInstance();
     final cached = AppVersionPolicy.fromJsonString(
-      prefs.getString('app_version_policy_${platform}'),
+      prefs.getString('app_version_policy_$platform'),
     );
 
     if (!mounted || cached == null) return;
@@ -840,7 +840,7 @@ class _StartPageState extends State<StartPage>
             Platform.isAndroid,
         onRetryPressed: Platform.isAndroid ? _attemptImmediateUpdate : null,
         version: _currentVersion,
-        build: _currentBuild,
+        buildNumber: _currentBuild,
         comparisonMode: _versionPolicy?.comparisonMode ?? 'version',
         minVersion: _versionPolicy?.minSupportedVersion,
         minBuild: _versionPolicy?.minSupportedBuild,
@@ -1233,7 +1233,7 @@ class ForceUpdateScreen extends StatelessWidget {
     this.onRetryPressed,
     this.storeUrl,
     required this.version,
-    required this.build,
+    required this.buildNumber,
     required this.comparisonMode,
     this.minVersion,
     this.minBuild,
@@ -1247,7 +1247,7 @@ class ForceUpdateScreen extends StatelessWidget {
   final bool canOpenStore;
   final VoidCallback? onRetryPressed;
   final String version;
-  final int build;
+  final int buildNumber;
   final String comparisonMode;
   final String? minVersion;
   final int? minBuild;
@@ -1305,7 +1305,7 @@ class ForceUpdateScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     if (version.isNotEmpty)
                       Text(
-                        'Versión instalada: $version ($build)',
+                        'Versión instalada: $version ($buildNumber)',
                         style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               color: cs.onSurface.withOpacity(0.55),
                             ),

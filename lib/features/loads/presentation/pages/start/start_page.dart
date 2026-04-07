@@ -1,10 +1,16 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:convert';
 import 'dart:math';
 import 'package:conexion_carga_app/app/widgets/clean_filter.dart'; // 👈 NUEVO
 
 
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'package:in_app_update/in_app_update.dart';
 
 // 🎨 Tema y colores (los tuyos)
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
@@ -17,6 +23,8 @@ import 'package:conexion_carga_app/app/widgets/theme_toggle.dart';
 
 // 🔐 Sesión / usuario
 import 'package:conexion_carga_app/core/auth_session.dart';
+import 'package:conexion_carga_app/core/env.dart';
+import 'package:conexion_carga_app/core/app_version_policy.dart';
 
 // 🌐 Datos
 import 'package:conexion_carga_app/features/loads/data/loads_api.dart';
@@ -114,6 +122,12 @@ class _StartPageState extends State<StartPage>
   // ============================================================================
   bool _showAd = true;
   bool _showHint = false;
+  bool _checkingVersion = false;
+  bool _forceUpdateRequired = false;
+  bool _updateFlowStarted = false;
+  AppVersionPolicy? _versionPolicy;
+  String _currentVersion = '';
+  int _currentBuild = 0;
 
   bool get _hasActiveSearchOrFilters =>
       _searchQuery.trim().isNotEmpty || !_filters.isEmpty;
@@ -163,6 +177,8 @@ class _StartPageState extends State<StartPage>
   void initState() {
     super.initState();
 
+    _checkVersionPolicy();
+
     // 1) Cargar viajes (sin cambiar lógica)
     _reload();
 
@@ -191,6 +207,114 @@ class _StartPageState extends State<StartPage>
     // ✅ Controller animación
     _registerGlowController.dispose();
     super.dispose();
+  }
+
+  // ============================================================================
+  // ✅ ACTUALIZACION OBLIGATORIA
+  // ----------------------------------------------------------------------------
+  Future<void> _checkVersionPolicy() async {
+    if (_checkingVersion) return;
+    _checkingVersion = true;
+
+    try {
+      final info = await PackageInfo.fromPlatform();
+      _currentVersion = info.version;
+      _currentBuild = int.tryParse(info.buildNumber) ?? 0;
+
+      final platform = Platform.isIOS ? 'ios' : 'android';
+      final uri = Uri.parse('${Env.baseUrl}/api/app/version-policy').replace(
+        queryParameters: {
+          'platform': platform,
+          'version': _currentVersion,
+          'build': _currentBuild.toString(),
+        },
+      );
+
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (response.statusCode == 200) {
+        final policy = AppVersionPolicy.fromJson(
+          jsonDecode(response.body) as Map<String, dynamic>,
+        );
+        await _cachePolicy(policy);
+        if (!mounted) return;
+        if (policy.forceUpdate) {
+          setState(() {
+            _forceUpdateRequired = true;
+            _versionPolicy = policy;
+          });
+          if (Platform.isAndroid) {
+            await _attemptImmediateUpdate();
+          }
+        } else {
+          setState(() {
+            _forceUpdateRequired = false;
+            _versionPolicy = policy;
+          });
+        }
+      } else {
+        await _loadCachedPolicyIfNeeded();
+      }
+    } catch (_) {
+      await _loadCachedPolicyIfNeeded();
+    } finally {
+      _checkingVersion = false;
+    }
+  }
+
+  Future<void> _attemptImmediateUpdate() async {
+    if (_updateFlowStarted) return;
+    _updateFlowStarted = true;
+
+    try {
+      final updateInfo = await InAppUpdate.checkForUpdate();
+      if (updateInfo.updateAvailability == UpdateAvailability.updateAvailable &&
+          updateInfo.immediateUpdateAllowed) {
+        await InAppUpdate.performImmediateUpdate();
+        return;
+      }
+    } catch (_) {
+      // Si falla el flujo Play, dejamos el bloqueo con botón a tienda.
+    } finally {
+      _updateFlowStarted = false;
+    }
+  }
+
+  Future<void> _cachePolicy(AppVersionPolicy policy) async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'app_version_policy_${policy.platform}';
+    await prefs.setString(key, policy.toJsonString());
+  }
+
+  Future<void> _loadCachedPolicyIfNeeded() async {
+    final platform = Platform.isIOS ? 'ios' : 'android';
+    final prefs = await SharedPreferences.getInstance();
+    final cached = AppVersionPolicy.fromJsonString(
+      prefs.getString('app_version_policy_${platform}'),
+    );
+
+    if (!mounted || cached == null) return;
+
+    if (cached.forceUpdate) {
+      setState(() {
+        _forceUpdateRequired = true;
+        _versionPolicy = cached;
+      });
+      if (Platform.isAndroid) {
+        await _attemptImmediateUpdate();
+      }
+    }
+  }
+
+  Future<void> _openStoreUrl() async {
+    final url = _versionPolicy?.storeUrl ??
+        (Platform.isAndroid
+            ? 'https://play.google.com/store/apps/details?id=com.infinitysoftware.conexioncarga'
+            : null);
+    if (url == null || url.trim().isEmpty) {
+      return;
+    }
+    final uri = Uri.parse(url);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   // ============================================================================
@@ -706,6 +830,24 @@ class _StartPageState extends State<StartPage>
     final bool showCleanFilter = showCounterBubble && tripsCount == 0;
     final bool cleanEnabled = _publicTrips.isNotEmpty && _hasActiveSearchOrFilters;
 
+    if (_forceUpdateRequired) {
+      return ForceUpdateScreen(
+        message: _versionPolicy?.message ??
+            'Debes actualizar la app para continuar.',
+        storeUrl: _versionPolicy?.storeUrl,
+        onUpdatePressed: _openStoreUrl,
+        canOpenStore: (_versionPolicy?.storeUrl?.trim().isNotEmpty ?? false) ||
+            Platform.isAndroid,
+        onRetryPressed: Platform.isAndroid ? _attemptImmediateUpdate : null,
+        version: _currentVersion,
+        build: _currentBuild,
+        comparisonMode: _versionPolicy?.comparisonMode ?? 'version',
+        minVersion: _versionPolicy?.minSupportedVersion,
+        minBuild: _versionPolicy?.minSupportedBuild,
+        latestVersion: _versionPolicy?.latestVersion,
+        latestBuild: _versionPolicy?.latestBuild,
+      );
+    }
 
     return Scaffold(
       appBar: _buildAppBar(),
@@ -1077,6 +1219,170 @@ class _FilterTextField extends StatelessWidget {
           isDense: true,
         ),
         onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class ForceUpdateScreen extends StatelessWidget {
+  const ForceUpdateScreen({
+    super.key,
+    required this.message,
+    required this.onUpdatePressed,
+    required this.canOpenStore,
+    this.onRetryPressed,
+    this.storeUrl,
+    required this.version,
+    required this.build,
+    required this.comparisonMode,
+    this.minVersion,
+    this.minBuild,
+    this.latestVersion,
+    this.latestBuild,
+  });
+
+  final String message;
+  final String? storeUrl;
+  final VoidCallback onUpdatePressed;
+  final bool canOpenStore;
+  final VoidCallback? onRetryPressed;
+  final String version;
+  final int build;
+  final String comparisonMode;
+  final String? minVersion;
+  final int? minBuild;
+  final String? latestVersion;
+  final int? latestBuild;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: Scaffold(
+        backgroundColor: isLight ? const Color(0xFFF7F8FC) : cs.surface,
+        body: SafeArea(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      height: 72,
+                      width: 72,
+                      decoration: BoxDecoration(
+                        color: cs.primary.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.system_update,
+                        color: cs.primary,
+                        size: 36,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Actualización obligatoria',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: cs.onSurface.withOpacity(0.7),
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (version.isNotEmpty)
+                      Text(
+                        'Versión instalada: $version ($build)',
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: cs.onSurface.withOpacity(0.55),
+                            ),
+                      ),
+                    const SizedBox(height: 6),
+                    if (minBuild != null || (minVersion?.isNotEmpty ?? false))
+                      Text(
+                        comparisonMode == 'build'
+                            ? 'Mínimo requerido: build ${minBuild ?? '-'}'
+                            : 'Mínimo requerido: ${minVersion ?? '-'}'
+                                '${minBuild != null ? ' · build $minBuild' : ''}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              color: cs.onSurface.withOpacity(0.55),
+                            ),
+                      ),
+                    if (latestVersion != null || latestBuild != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Última publicada: ${latestVersion ?? '-'}'
+                          '${latestBuild != null ? ' · build $latestBuild' : ''}',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: cs.onSurface.withOpacity(0.45),
+                              ),
+                        ),
+                      ),
+                    const SizedBox(height: 24),
+                    if (canOpenStore)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: onUpdatePressed,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: cs.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text('Actualizar ahora'),
+                        ),
+                      ),
+                    if (canOpenStore) const SizedBox(height: 10),
+                    if (onRetryPressed != null) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton(
+                          onPressed: onRetryPressed,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          child: const Text('Reintentar actualización'),
+                        ),
+                      ),
+                    ],
+                    if (storeUrl != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        storeUrl!,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: cs.onSurface.withOpacity(0.45),
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

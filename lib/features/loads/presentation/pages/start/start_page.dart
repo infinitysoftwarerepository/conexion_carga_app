@@ -972,12 +972,19 @@ class _StartPageState extends State<StartPage>
               children: [
                 if (user != null)
                   IconButton(
-                    key: _profileKey,
                     tooltip: 'Perfil',
                     icon: const Icon(Icons.person_outline),
-                    onPressed: _openProfileMenu,
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ProfilePage()),
+                      );
+                    },
                   ),
-                GlyphFilter(size: 20, onTap: _openFiltersSheet),
+                GlyphFilter(
+                  key: _profileKey,
+                  size: 20,
+                  onTap: _openProfileMenu,
+                ),
                 const ThemeToggle(size: 22),
                 const SizedBox(width: 8),
               ],

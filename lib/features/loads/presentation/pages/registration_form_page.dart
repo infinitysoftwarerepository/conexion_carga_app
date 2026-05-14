@@ -3,7 +3,8 @@ import 'dart:math' as math;
 
 
 
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kDebugMode, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -490,6 +491,7 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final showThirdPartyLogin = defaultTargetPlatform != TargetPlatform.iOS;
 
     final headerColor = isLight
         ? kBrandGreen.withOpacity(0.35)
@@ -863,33 +865,35 @@ class _RegistrationFormPageState extends State<RegistrationFormPage> {
               ),
               const SizedBox(height: 16),
 
-              const Text('O inicia sesión con una de las siguientes cuentas'),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SsoIconButton(
-                    icon: FontAwesomeIcons.google,
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Google sign-in (pronto)')),
+              if (showThirdPartyLogin) ...[
+                const Text('O inicia sesión con una de las siguientes cuentas'),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SsoIconButton(
+                      icon: FontAwesomeIcons.google,
+                      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Google sign-in (pronto)')),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  SsoIconButton(
-                    icon: FontAwesomeIcons.microsoft,
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Microsoft sign-in (pronto)')),
+                    const SizedBox(width: 16),
+                    SsoIconButton(
+                      icon: FontAwesomeIcons.microsoft,
+                      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Microsoft sign-in (pronto)')),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  SsoIconButton(
-                    icon: FontAwesomeIcons.apple,
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Apple sign-in (pronto)')),
+                    const SizedBox(width: 16),
+                    SsoIconButton(
+                      icon: FontAwesomeIcons.apple,
+                      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Apple sign-in (pronto)')),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

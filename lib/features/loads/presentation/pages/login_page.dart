@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 
 // 🎨 Paleta propia
 import 'package:conexion_carga_app/app/theme/theme_conection.dart';
@@ -92,6 +93,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final showThirdPartyLogin = defaultTargetPlatform != TargetPlatform.iOS;
 
     // Gradiente del “cajón” de login
     final Gradient panelGradient = isLight
@@ -379,22 +381,22 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
 
-                  const SizedBox(height: 16),
-
-                  // ===== SSO debajo del cajón =====
-                  const Text(
-                      'O inicia sesión con una de las siguientes cuentas'),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      SsoIconButton(icon: FontAwesomeIcons.google),
-                      SizedBox(width: 16),
-                      SsoIconButton(icon: FontAwesomeIcons.microsoft),
-                      SizedBox(width: 16),
-                      SsoIconButton(icon: FontAwesomeIcons.apple),
-                    ],
-                  ),
+                  if (showThirdPartyLogin) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                        'O inicia sesión con una de las siguientes cuentas'),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        SsoIconButton(icon: FontAwesomeIcons.google),
+                        SizedBox(width: 16),
+                        SsoIconButton(icon: FontAwesomeIcons.microsoft),
+                        SizedBox(width: 16),
+                        SsoIconButton(icon: FontAwesomeIcons.apple),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

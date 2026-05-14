@@ -11,8 +11,12 @@ class AuthUser {
   final String email;
   final String firstName;
   final String lastName;
+  final String document;
+  final String phone;
+  final bool isCompany;
+  final String companyName;
   final bool isPremium;
-    final bool isDriver;     // 👈 NUEVO
+  final bool isDriver;
   final int points;
 
   const AuthUser({
@@ -20,9 +24,12 @@ class AuthUser {
     required this.email,
     required this.firstName,
     required this.lastName,
-    required this.isDriver,   // 👈 NUEVO
+    this.document = '',
+    this.phone = '',
+    this.isCompany = false,
+    this.companyName = '',
+    required this.isDriver,
     required this.isPremium,
-    
     required this.points,
   });
 
@@ -32,23 +39,28 @@ class AuthUser {
       email: (j['email'] ?? '').toString(),
       firstName: (j['first_name'] ?? j['firstName'] ?? '').toString(),
       lastName: (j['last_name'] ?? j['lastName'] ?? '').toString(),
+      document: (j['document'] ?? '').toString(),
+      phone: (j['phone'] ?? '').toString(),
+      isCompany: j['is_company'] == true || j['isCompany'] == true,
+      companyName: (j['company_name'] ?? j['companyName'] ?? '').toString(),
       isPremium: j['is_premium'] == true || j['isPremium'] == true,
-      isDriver: j['is_driver'] == true || j['isDriver'] == true,  // 👈 NUEVO
-
+      isDriver: j['is_driver'] == true || j['isDriver'] == true,
       points: (j['points'] is int)
           ? j['points'] as int
           : int.tryParse('${j['points'] ?? 0}') ?? 0,
     );
   }
 
-  get companyName => null;
-
   Map<String, dynamic> toJson() => {
         'id': id,
         'email': email,
         'first_name': firstName,
         'last_name': lastName,
-        'is_driver': isDriver,     // 👈 NUEVO
+        'document': document,
+        'phone': phone,
+        'is_company': isCompany,
+        'company_name': companyName,
+        'is_driver': isDriver,
         'is_premium': isPremium,
         'points': points,
       };

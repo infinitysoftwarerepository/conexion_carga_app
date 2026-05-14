@@ -27,7 +27,6 @@ class _StartFooterBannerState extends State<StartFooterBanner> {
     'assets/images/logo_conexion_carga_oficial_cliente_V1.png',
     'assets/images/gana_premios_tres_pasos.png',
     'assets/images/gana_premios_con_conexion_carga.png',
-    'assets/images/proximamente_V2.png',
     'assets/images/con_tu_apoyo.png',
     'assets/images/qr_inferior.png',
   ];

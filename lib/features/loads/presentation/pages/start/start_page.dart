@@ -32,6 +32,7 @@ import 'package:conexion_carga_app/features/loads/domain/trip.dart';
 
 // 📄 Navegación a donación
 import 'package:conexion_carga_app/features/loads/presentation/pages/donation_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/profile_page.dart';
 
 // ✅ Widgets extraídos (refactor paso 3)
 import 'widgets_start/start_header.dart';
@@ -1013,18 +1014,23 @@ class _StartPageState extends State<StartPage>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       items: <PopupMenuEntry<void>>[
         PopupMenuItem<void>(
-          enabled: false,
+          enabled: user != null,
+          onTap: () {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfilePage()),
+              );
+            });
+          },
           padding: EdgeInsets.zero,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: Opacity(
-              opacity: 0.45,
-              child: _DisabledActionButton(
-                label: 'Editar perfil',
-                icon: Icons.edit_outlined,
-                bg: bg,
-                fg: fg,
-              ),
+            child: _ProfileActionButton(
+              label: 'Editar perfil',
+              icon: Icons.edit_outlined,
+              bg: bg,
+              fg: fg,
             ),
           ),
         ),
@@ -1057,8 +1063,8 @@ class _StartPageState extends State<StartPage>
 /// Helpers del menú de perfil
 /// ---------------------------------------------------------------------------
 
-class _DisabledActionButton extends StatelessWidget {
-  const _DisabledActionButton({
+class _ProfileActionButton extends StatelessWidget {
+  const _ProfileActionButton({
     required this.label,
     required this.icon,
     required this.bg,

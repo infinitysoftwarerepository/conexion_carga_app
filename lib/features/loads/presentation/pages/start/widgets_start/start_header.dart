@@ -10,6 +10,7 @@ import 'package:conexion_carga_app/features/loads/presentation/pages/registratio
 import 'package:conexion_carga_app/features/loads/presentation/pages/my_loads_page.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/points_page.dart';
 import 'package:conexion_carga_app/features/loads/presentation/pages/new_trip_page.dart';
+import 'package:conexion_carga_app/features/loads/presentation/pages/profile_page.dart';
 
 /// ===============================================================
 /// ✅ StartHeader
@@ -169,6 +170,21 @@ class StartHeader extends StatelessWidget {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const PointsPage()),
+                );
+              },
+            ),
+          );
+
+          buttons.add(
+            NewActionFab(
+              label: 'Editar perfil',
+              icon: Icons.edit_outlined,
+              backgroundColor: bg,
+              foregroundColor: fg,
+              textStyle: _headerButtonTextStyle,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfilePage()),
                 );
               },
             ),

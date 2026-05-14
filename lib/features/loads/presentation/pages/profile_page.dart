@@ -156,7 +156,7 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
       if (!mounted) return;
-      _showMessage('Perfil actualizado correctamente.');
+      _showMessage('Cambios guardados.');
     } catch (error) {
       if (!mounted) return;
       _showMessage(error.toString().replaceFirst('Exception: ', ''));

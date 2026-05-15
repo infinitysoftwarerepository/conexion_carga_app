@@ -1013,6 +1013,7 @@ class _StartPageState extends State<StartPage>
     final bg = isLight ? kGreenStrong : kDeepDarkGreen;
     final fg = isLight ? Colors.white : kGreyText;
     final user = AuthSession.instance.user.value;
+    final menuEnabled = user != null;
 
     await showMenu<void>(
       context: context,
@@ -1021,43 +1022,52 @@ class _StartPageState extends State<StartPage>
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       items: <PopupMenuEntry<void>>[
         PopupMenuItem<void>(
-          enabled: user != null,
-          onTap: () {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ProfilePage()),
-              );
-            });
-          },
+          enabled: menuEnabled,
+          onTap: menuEnabled
+              ? () {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (!mounted) return;
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const ProfilePage()),
+                    );
+                  });
+                }
+              : null,
           padding: EdgeInsets.zero,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: _ProfileActionButton(
-              label: 'Editar perfil',
-              icon: Icons.edit_outlined,
-              bg: bg,
-              fg: fg,
+            child: Opacity(
+              opacity: menuEnabled ? 1 : 0.45,
+              child: _ProfileActionButton(
+                label: 'Editar perfil',
+                icon: Icons.edit_outlined,
+                bg: bg,
+                fg: fg,
+              ),
             ),
           ),
         ),
         const PopupMenuDivider(height: 8),
         PopupMenuItem<void>(
-          enabled: user != null,
+          enabled: menuEnabled,
           padding: EdgeInsets.zero,
           child: Padding(
             padding: const EdgeInsets.all(12),
-            child: _LogoutActionButton(
-              bg: bg,
-              fg: fg,
-              onLogout: () {
-                Navigator.pop(context);
-                AuthSession.instance.signOut();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Sesión cerrada.')),
-                );
-                _reload();
-              },
+            child: Opacity(
+              opacity: menuEnabled ? 1 : 0.45,
+              child: _LogoutActionButton(
+                bg: bg,
+                fg: fg,
+                enabled: menuEnabled,
+                onLogout: () {
+                  Navigator.pop(context);
+                  AuthSession.instance.signOut();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Sesión cerrada.')),
+                  );
+                  _reload();
+                },
+              ),
             ),
           ),
         ),
@@ -1110,17 +1120,19 @@ class _LogoutActionButton extends StatelessWidget {
   const _LogoutActionButton({
     required this.bg,
     required this.fg,
+    required this.enabled,
     required this.onLogout,
   });
 
   final Color bg;
   final Color fg;
+  final bool enabled;
   final VoidCallback onLogout;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onLogout,
+      onTap: enabled ? onLogout : null,
       borderRadius: BorderRadius.circular(18),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
